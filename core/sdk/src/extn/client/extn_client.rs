@@ -246,10 +246,13 @@ impl ExtnClient {
                 error!("IEC Latency {:?}", c_message);
             }
             let message_result: Result<ExtnMessage, RippleError> = c_message.clone().try_into();
-            if message_result.is_err() {
-                error!("invalid message {:?}", c_message);
-            }
-            let message = message_result.unwrap();
+            let message = match message_result {
+                Ok(extn_msg) => extn_msg,
+                Err(_) => {
+                    error!("invalid message {:?}", c_message);
+                    continue;
+                }
+            };
             debug!("** receiving message latency={} msg={:?}", latency, message);
             if message.payload.is_response() {
                 Self::handle_single(message, self.response_processors.clone());
@@ -293,6 +296,22 @@ impl ExtnClient {
                         RippleContextUpdateRequest::is_ripple_context_update(&message.payload)
                     {
                         self.context_update(request);
+                    }
+                    // if its a request coming as an extn provider the extension is calling on itself.
+                    // for eg an extension has a RPC Method provider and also a channel to process the
+                    // requests this below impl will take care of sending the data back to the Extension
+                    else if let Some(extn_id) = target_contract.is_extn_provider() {
+                        if let Some(s) = self.get_extn_sender_with_extn_id(&extn_id) {
+                            let new_message = message.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = s.send(new_message.into()).await {
+                                    error!("Error forwarding request {:?}", e)
+                                }
+                            });
+                        } else {
+                            error!("couldn't find the extension id registered the extn channel {:?} is not available", extn_id);
+                            self.handle_no_processor_error(message);
+                        }
                     }
                     // Forward the message to an extn sender
                     else if let Some(sender) = self.get_extn_sender_with_contract(target_contract)
@@ -600,7 +619,7 @@ impl ExtnClient {
 
     /// Request method which accepts a impl [ExtnPayloadProvider] and uses the capability provided by the trait to send the request.
     /// As part of the send process it adds a callback to asynchronously respond back to the caller when the response does get
-    /// received. This method can be called synchrnously with a timeout
+    /// received. This method can be called synchronously with a timeout
     ///
     /// # Arguments
     /// `payload` - impl [ExtnPayloadProvider]
@@ -786,7 +805,6 @@ pub mod tests {
 
     #[cfg(test)]
     impl Mockable for ExtnClient {
-        // TODO fix this to use the actual parameters
         fn mock_with_params(
             _id: ExtnId,
             _context: Vec<String>,
@@ -1065,8 +1083,6 @@ pub mod tests {
         );
     }
 
-    // TODO - try with some other extn id with same context and fulfill to check behavior
-    // TODO - add test case with with callback
     #[tokio::test(flavor = "multi_thread")]
     async fn test_request() {
         let (mock_sender, mock_rx) = ExtnSender::mock();
@@ -1094,7 +1110,7 @@ pub mod tests {
                 expected_response: Some(ExtnResponse::Boolean(true)),
             })
             .await;
-        println!("**** response: {:?}", response);
+
         match response {
             Ok(actual_response) => {
                 let expected_message = ExtnMessage {
@@ -1122,46 +1138,6 @@ pub mod tests {
                 panic!("Received an unexpected error");
             }
         }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_request_context_update() {
-        let (mock_sender, mock_rx) = ExtnSender::mock();
-        let main_client = ExtnClient::new(mock_rx, mock_sender.clone());
-        main_client.clone().add_sender(
-            ExtnId::get_main_target("main".into()),
-            ExtnSymbol {
-                id: "id".to_string(),
-                uses: vec!["config".to_string()],
-                fulfills: vec!["permissions".to_string()],
-                config: None,
-            },
-            mock_sender.tx,
-        );
-
-        let main_client_for_thread = main_client.clone();
-
-        tokio::spawn(async move {
-            main_client_for_thread.initialize().await;
-        });
-
-        let time_zone = "America/New_York".to_string();
-        let offset = -5;
-
-        let result =
-            main_client.request_transient(RippleContextUpdateRequest::TimeZone(TimeZone {
-                time_zone: time_zone.clone(),
-                offset,
-            }));
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        assert!(result.is_ok());
-
-        let ripple_context = main_client.ripple_context.read().unwrap();
-        assert_eq!(
-            ripple_context.time_zone.as_ref().unwrap().time_zone,
-            time_zone
-        );
-        assert_eq!(ripple_context.time_zone.as_ref().unwrap().offset, offset);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1449,6 +1425,46 @@ pub mod tests {
                 panic!("Received an unexpected error");
             }
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_request_context_update() {
+        let (mock_sender, mock_rx) = ExtnSender::mock();
+        let main_client = ExtnClient::new(mock_rx, mock_sender.clone());
+        main_client.clone().add_sender(
+            ExtnId::get_main_target("main".into()),
+            ExtnSymbol {
+                id: "id".to_string(),
+                uses: vec!["config".to_string()],
+                fulfills: vec!["permissions".to_string()],
+                config: None,
+            },
+            mock_sender.tx,
+        );
+
+        let main_client_for_thread = main_client.clone();
+
+        tokio::spawn(async move {
+            main_client_for_thread.initialize().await;
+        });
+
+        let time_zone = "America/New_York".to_string();
+        let offset = -5;
+
+        let result =
+            main_client.request_transient(RippleContextUpdateRequest::TimeZone(TimeZone {
+                time_zone: time_zone.clone(),
+                offset,
+            }));
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(result.is_ok());
+
+        let ripple_context = main_client.ripple_context.read().unwrap();
+        assert_eq!(
+            ripple_context.time_zone.as_ref().unwrap().time_zone,
+            time_zone
+        );
+        assert_eq!(ripple_context.time_zone.as_ref().unwrap().offset, offset);
     }
 
     // TODO - add test case for event subscribe & case with with callback?

@@ -236,62 +236,62 @@ impl FireboltOpenRpc {
     }
 
     // <pca>
-    pub fn get_methods_provider_set(&self) -> HashMap<String, ProviderSet> {
-        let mut provider_set_map = HashMap::default();
-        let on_request_methods: Vec<&FireboltOpenRpcMethod> = self
-            .methods
-            .iter()
-            .filter(|method| {
-                // <pca> debug - Just AcknowledgeChallenge.onRequestChallenge for now.
-                //if method.name.contains(".onRequest") {
-                if method
-                    .name
-                    .contains("AcknowledgeChallenge.onRequestChallenge")
-                {
-                    // </pca>
-                    if let Some(tags) = &method.tags {
-                        let mut has_event = false;
-                        let mut has_caps = false;
-                        for tag in tags {
-                            if tag.name.eq("event") {
-                                has_event = true;
-                            }
-                            if tag.name.eq("capabilities") {
-                                has_caps = true;
-                            }
-                        }
-                        has_event && has_caps
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            })
-            .collect();
+    // pub fn get_methods_provider_set(&self) -> HashMap<String, ProviderSet> {
+    //     let mut provider_set_map = HashMap::default();
+    //     let on_request_methods: Vec<&FireboltOpenRpcMethod> = self
+    //         .methods
+    //         .iter()
+    //         .filter(|method| {
+    //             // <pca> debug - Just AcknowledgeChallenge.onRequestChallenge for now.
+    //             //if method.name.contains(".onRequest") {
+    //             if method
+    //                 .name
+    //                 .contains("AcknowledgeChallenge.onRequestChallenge")
+    //             {
+    //                 // </pca>
+    //                 if let Some(tags) = &method.tags {
+    //                     let mut has_event = false;
+    //                     let mut has_caps = false;
+    //                     for tag in tags {
+    //                         if tag.name.eq("event") {
+    //                             has_event = true;
+    //                         }
+    //                         if tag.name.eq("capabilities") {
+    //                             has_caps = true;
+    //                         }
+    //                     }
+    //                     has_event && has_caps
+    //                 } else {
+    //                     false
+    //                 }
+    //             } else {
+    //                 false
+    //             }
+    //         })
+    //         .collect();
 
-        for method in on_request_methods {
-            if let Some(tags) = method.tags.clone() {
-                let mut provider_set = ProviderSet::new();
-                for tag in tags {
-                    if tag.name.eq("event") {
-                        provider_set.response = tag.response.clone();
-                        provider_set.error = tag.error.clone();
-                    } else if tag.name.eq("capabilities") {
-                        provider_set.provides = tag.get_provides().clone();
-                        provider_set.allow_focus = tag.allow_focus.clone();
-                        provider_set.response_for = tag.response_for.clone();
-                        provider_set.error_for = tag.error_for.clone();
-                        provider_set.focus_for = tag.focus_for.clone();
-                    }
-                }
-                provider_set_map.insert(method.name.clone(), provider_set);
-            }
-        }
+    //     for method in on_request_methods {
+    //         if let Some(tags) = method.tags.clone() {
+    //             let mut provider_set = ProviderSet::new();
+    //             for tag in tags {
+    //                 if tag.name.eq("event") {
+    //                     provider_set.response = tag.response.clone();
+    //                     provider_set.error = tag.error.clone();
+    //                 } else if tag.name.eq("capabilities") {
+    //                     provider_set.provides = tag.get_provides().clone();
+    //                     provider_set.allow_focus = tag.allow_focus.clone();
+    //                     provider_set.response_for = tag.response_for.clone();
+    //                     provider_set.error_for = tag.error_for.clone();
+    //                     provider_set.focus_for = tag.focus_for.clone();
+    //                 }
+    //             }
+    //             provider_set_map.insert(method.name.clone(), provider_set);
+    //         }
+    //     }
 
-        println!("*** _DEBUG: provider_set_map={:?}", provider_set_map);
-        provider_set_map
-    }
+    //     println!("*** _DEBUG: provider_set_map={:?}", provider_set_map);
+    //     provider_set_map
+    // }
     // </pca>
 
     pub fn get_setter_method_for_getter(
@@ -405,7 +405,10 @@ impl FireboltOpenRpcTag {
         None
     }
 
-    fn get_provides(&self) -> Option<FireboltCap> {
+    // <pca>
+    //fn get_provides(&self) -> Option<FireboltCap> {
+    pub fn get_provides(&self) -> Option<FireboltCap> {
+        // </pca>
         if let Some(caps) = self.provides.clone() {
             return Some(FireboltCap::Full(caps));
         }
@@ -746,36 +749,6 @@ impl CapabilitySet {
         }
     }
 }
-
-// <pca>
-#[derive(Debug, Clone)]
-pub struct ProviderSet {
-    pub provides: Option<FireboltCap>,
-    // <pca> Will need for request validation
-    //pub request: Option<Value>,
-    // </pca>
-    pub response: Option<Value>,
-    pub response_for: Option<String>,
-    pub error: Option<Value>,
-    pub error_for: Option<String>,
-    pub allow_focus: Option<bool>,
-    pub focus_for: Option<String>,
-}
-
-impl ProviderSet {
-    pub fn new() -> ProviderSet {
-        ProviderSet {
-            provides: None,
-            response: None,
-            response_for: None,
-            error: None,
-            error_for: None,
-            allow_focus: None,
-            focus_for: None,
-        }
-    }
-}
-// </pca>
 
 #[cfg(test)]
 mod tests {

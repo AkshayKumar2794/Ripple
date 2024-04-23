@@ -137,6 +137,14 @@ pub struct ProviderAttributes {
     pub error_payload: ProviderResponsePayload,
 }
 
+impl ProviderAttributes {
+    pub fn get(name: &str) -> Option<ProviderAttributes> {
+        println!("*** _DEBUG: ProviderAttributes::get: name={}", name);
+        match name {
+            _ => None,
+        }
+    }
+}
 // </pca>
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

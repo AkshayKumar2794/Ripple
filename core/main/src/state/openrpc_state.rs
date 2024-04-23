@@ -20,8 +20,9 @@ use ripple_sdk::api::{
         fb_capabilities::FireboltPermission,
         fb_openrpc::{
             CapabilitySet, FireboltOpenRpc, FireboltOpenRpcMethod, FireboltVersionManifest,
-            OpenRPCParser, ProviderSet,
+            OpenRPCParser,
         },
+        provider::ProviderAttributes,
     },
     manifest::exclusory::{Exclusory, ExclusoryImpl},
 };
@@ -37,6 +38,98 @@ pub enum ApiSurface {
     Firebolt,
     Ripple,
 }
+
+// <pca>
+#[derive(Debug, Clone)]
+pub struct ProviderSet {
+    pub provides: Option<FireboltCap>,
+    // <pca> Will need for request validation
+    //pub request: Option<Value>,
+    // </pca>
+    pub response: Option<Value>,
+    pub response_for: Option<String>,
+    pub error: Option<Value>,
+    pub error_for: Option<String>,
+    pub allow_focus: Option<bool>,
+    pub focus_for: Option<String>,
+    pub attributes: Option<ProviderAttributes>,
+}
+
+impl ProviderSet {
+    pub fn new() -> ProviderSet {
+        ProviderSet {
+            provides: None,
+            response: None,
+            response_for: None,
+            error: None,
+            error_for: None,
+            allow_focus: None,
+            focus_for: None,
+            attributes: None,
+        }
+    }
+}
+
+pub fn get_methods_provider_set(
+    methods: &Vec<FireboltOpenRpcMethod>,
+) -> HashMap<String, ProviderSet> {
+    let mut provider_set_map = HashMap::default();
+    let on_request_methods: Vec<&FireboltOpenRpcMethod> = methods
+        .iter()
+        .filter(|method| {
+            // <pca> debug - Just AcknowledgeChallenge.onRequestChallenge for now.
+            //if method.name.contains(".onRequest") {
+            if method
+                .name
+                .contains("AcknowledgeChallenge.onRequestChallenge")
+            {
+                // </pca>
+                if let Some(tags) = &method.tags {
+                    let mut has_event = false;
+                    let mut has_caps = false;
+                    for tag in tags {
+                        if tag.name.eq("event") {
+                            has_event = true;
+                        }
+                        if tag.name.eq("capabilities") {
+                            has_caps = true;
+                        }
+                    }
+                    has_event && has_caps
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        })
+        .collect();
+
+    for method in on_request_methods {
+        if let Some(tags) = method.tags.clone() {
+            let mut provider_set = ProviderSet::new();
+            for tag in tags {
+                if tag.name.eq("event") {
+                    provider_set.response = tag.response.clone();
+                    provider_set.error = tag.error.clone();
+                } else if tag.name.eq("capabilities") {
+                    provider_set.provides = tag.get_provides().clone();
+                    provider_set.allow_focus = tag.allow_focus.clone();
+                    provider_set.response_for = tag.response_for.clone();
+                    provider_set.error_for = tag.error_for.clone();
+                    provider_set.focus_for = tag.focus_for.clone();
+                }
+            }
+            let method_name: Vec<&str> = method.name.split('.').collect();
+            provider_set.attributes = ProviderAttributes::get(&method_name[0]);
+            provider_set_map.insert(method.name.clone(), provider_set);
+        }
+    }
+
+    println!("*** _DEBUG: provider_set_map={:?}", provider_set_map);
+    provider_set_map
+}
+// </pca>
 
 #[derive(Debug, Clone)]
 pub struct OpenRpcState {
@@ -82,7 +175,10 @@ impl OpenRpcState {
             // </pca>
             extended_rpc: Arc::new(RwLock::new(Vec::new())),
             // <pca>
-            provider_map: Arc::new(RwLock::new(firebolt_open_rpc.get_methods_provider_set())),
+            //provider_map: Arc::new(RwLock::new(firebolt_open_rpc.get_methods_provider_set())),
+            provider_map: Arc::new(RwLock::new(get_methods_provider_set(
+                &firebolt_open_rpc.methods,
+            ))),
             // </pca>
         }
     }

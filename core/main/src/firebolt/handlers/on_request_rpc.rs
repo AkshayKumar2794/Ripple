@@ -21,7 +21,10 @@ use crate::{
     firebolt::rpc::RippleRPCProvider, service::apps::provider_broker::ProviderBroker,
     state::platform_state::PlatformState,
 };
-use jsonrpsee::{core::RpcResult, RpcModule};
+use jsonrpsee::{
+    core::{server::rpc_module::Methods, RpcResult},
+    RpcModule,
+};
 use ripple_sdk::{
     api::{
         firebolt::{
@@ -37,14 +40,14 @@ use ripple_sdk::{
     log::debug,
 };
 
-#[derive(Debug)]
-pub struct OnRequest {
-    pub platform_state: PlatformState,
-}
+macro_rules! rpc_provider_impl {
+    ($name:ident, $capability:ident, $event:ident, $response_type:ty, $response_payload:expr, $error_type:ty, $error_payload:expr) => {
+        #[derive(Debug)]
+        pub struct $nameRPCProvider {
+            pub platform_state: PlatformState,
+        }
 
-macro_rules! on_request_impl {
-    ($capability:ident, $event:ident, $response_type:ty, $response_payload:expr, $error_type:ty, $error_payload:expr) => {
-        impl OnRequest {
+        impl $nameRPCProvider {
             async fn on_request(
                 &self,
                 ctx: CallContext,
@@ -135,5 +138,26 @@ impl RippleRPCProvider<OnRequest> for OnRequestRPCProvider {
             platform_state: state.clone(),
         })
         //.register_method(method_name, callback)
+    }
+}
+
+pub struct RippleRPCProviderGenerator;
+
+impl RippleRPCProviderGenerator {
+    pub fn generate(platform_state: PlatformState, mut methods: &Methods) {
+        let provider_map = state.open_rpc_state.get_provider_map();
+        for method in provider_map.keys() {
+            if let Some(provider_set) = provider_map.get(method) {
+                rpc_provider_impl!(
+                    ACK_CHALLENGE_NAME,
+                    ACK_CHALLENGE_CAPABILITY,
+                    ACK_CHALLENGE_EVENT,
+                    ChallengeResponse,
+                    ProviderResponsePayload::ChallengeResponse,
+                    ChallengeError,
+                    ProviderResponsePayload::ChallengeError
+                );
+            }
+        }
     }
 }

@@ -126,6 +126,19 @@ pub struct ExternalProviderResponse<T> {
     pub result: T,
 }
 
+// <pca>
+pub struct ProviderAttributes {
+    pub name: &'static str,
+    pub capability: &'static str,
+    pub event: &'static str,
+    pub response_type: &'static str,
+    pub response_payload: ProviderResponsePayload,
+    pub error_type: &'static str,
+    pub error_payload: ProviderResponsePayload,
+}
+
+// </pca>
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ChallengeResponse {

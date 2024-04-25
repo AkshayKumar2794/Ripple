@@ -25,8 +25,8 @@ use ripple_sdk::{
                 LifecycleManagementEventRequest, LifecycleManagementProviderEvent,
             },
             provider::{
-                FocusRequest, ProviderRequest, ProviderRequestPayload, ProviderResponse,
-                ProviderResponsePayload, ACK_CHALLENGE_CAPABILITY,
+                ExternalProviderResponse, FocusRequest, ProviderRequest, ProviderRequestPayload,
+                ProviderResponse, ProviderResponsePayload, ACK_CHALLENGE_CAPABILITY,
             },
         },
         gateway::rpc_gateway_api::{CallContext, CallerSession},

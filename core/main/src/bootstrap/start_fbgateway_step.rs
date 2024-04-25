@@ -28,7 +28,7 @@ use crate::{
             lcm_rpc::LifecycleManagementProvider, lifecycle_rpc::LifecycleRippleProvider,
             localization_rpc::LocalizationRPCProvider,
             metrics_management_rpc::MetricsManagementProvider, metrics_rpc::MetricsRPCProvider,
-            on_request_rpc::OnRequestRPCProvider, parameters_rpc::ParametersRPCProvider,
+            on_request_rpc::RippleRPCProviderGenerator, parameters_rpc::ParametersRPCProvider,
             pin_rpc::PinRPCProvider, privacy_rpc::PrivacyProvider, profile_rpc::ProfileRPCProvider,
             second_screen_rpc::SecondScreenRPCProvider,
             secure_storage_rpc::SecureStorageRPCProvider, user_grants_rpc::UserGrantsRPCProvider,
@@ -55,7 +55,8 @@ impl FireboltGatewayStep {
         let _ = methods.merge(KeyboardRPCProvider::provide_with_alias(state.clone()));
         // <pca>
         //let _ = methods.merge(AckRPCProvider::provide_with_alias(state.clone()));
-        let _ = methods.merge(OnRequestRPCProvider::provide_with_alias(state.clone()));
+        //let _ = methods.merge(OnRequestRPCProvider::provide_with_alias(state.clone()));
+        RippleRPCProviderGenerator::generate(&state, &methods);
         // </pca>
         let _ = methods.merge(PinRPCProvider::provide_with_alias(state.clone()));
         let _ = methods.merge(ClosedcaptionsRPCProvider::provide_with_alias(state.clone()));

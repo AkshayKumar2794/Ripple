@@ -17,7 +17,7 @@
 
 use ripple_sdk::api::{
     firebolt::{
-        fb_capabilities::FireboltPermission,
+        fb_capabilities::{FireboltCap, FireboltPermission},
         fb_openrpc::{
             CapabilitySet, FireboltOpenRpc, FireboltOpenRpcMethod, FireboltVersionManifest,
             OpenRPCParser,
@@ -28,6 +28,7 @@ use ripple_sdk::api::{
 };
 use ripple_sdk::log::error;
 use ripple_sdk::{api::firebolt::fb_openrpc::CapabilityPolicy, serde_json};
+use serde_json::Value;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -122,6 +123,7 @@ pub fn get_methods_provider_set(
             }
             let method_name: Vec<&str> = method.name.split('.').collect();
             provider_set.attributes = ProviderAttributes::get(&method_name[0]);
+            // <pca> TODO: Add more attribs. </pca>
             provider_set_map.insert(method.name.clone(), provider_set);
         }
     }

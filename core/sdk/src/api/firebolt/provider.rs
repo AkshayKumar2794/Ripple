@@ -43,6 +43,8 @@ pub enum ProviderRequestPayload {
 }
 
 // <pca>
+#[derive(Debug, Clone)]
+
 pub enum ProviderResponsePayloadType {
     ChallengeResponse,
     ChallengeError,
@@ -182,6 +184,8 @@ pub struct ExternalProviderResponse<T> {
 }
 
 // <pca>
+#[derive(Debug, Clone)]
+
 pub struct ProviderAttributes {
     pub name: String,
     pub event: &'static str,

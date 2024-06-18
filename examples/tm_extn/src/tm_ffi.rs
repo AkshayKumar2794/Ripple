@@ -16,7 +16,7 @@
 //
 
 use ripple_sdk::{
-    api::{firebolt::fb_telemetry::OperationalMetricRequest, status_update::ExtnStatus},
+    api::{observability::operational_metrics::OperationalMetricRequest,  status_update::ExtnStatus},
     async_channel::Receiver as CReceiver,
     export_channel_builder, export_extn_metadata,
     extn::{

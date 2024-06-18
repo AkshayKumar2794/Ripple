@@ -29,13 +29,12 @@ use jsonrpsee::{
 };
 use ripple_sdk::{
     api::{
-        firebolt::fb_metrics::Timer,
-        gateway::rpc_gateway_api::{ApiMessage, RpcRequest},
+        gateway::rpc_gateway_api::{ApiMessage, RpcRequest}, observability::operational_metrics::Timer,
     },
     chrono::Utc,
     extn::extn_client_message::ExtnMessage,
     log::{error, info},
-    tokio::{self},
+    tokio,
     utils::error::RippleError,
 };
 use std::sync::{Arc, RwLock};

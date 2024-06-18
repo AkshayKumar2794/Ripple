@@ -29,19 +29,12 @@ use println as error;
 
 use crate::{
     api::{
-        account_link::AccountLinkRequest,
-        app_catalog::{AppCatalogRequest, AppMetadata, AppsUpdate},
-        apps::AppEventRequest,
-        caps::CapsRequest,
-        config::{Config, ConfigResponse},
-        context::{RippleContext, RippleContextUpdateRequest},
-        device::{
+        account_link::AccountLinkRequest, app_catalog::{AppCatalogRequest, AppMetadata, AppsUpdate}, apps::AppEventRequest, caps::CapsRequest, config::{Config, ConfigResponse}, context::{RippleContext, RippleContextUpdateRequest}, device::{
             device_apps::InstalledApp,
             device_events::DeviceEventRequest,
             device_peristence::StorageData,
             device_request::{DeviceRequest, NetworkResponse, TimeZone, VoiceGuidanceState},
-        },
-        distributor::{
+        }, distributor::{
             distributor_permissions::{PermissionRequest, PermissionResponse},
             distributor_platform::PlatformTokenRequest,
             distributor_privacy::{PrivacyCloudRequest, PrivacySettingsStoreRequest},
@@ -49,8 +42,7 @@ use crate::{
             distributor_sync::SyncAndMonitorRequest,
             distributor_token::DistributorTokenRequest,
             distributor_usergrants::UserGrantsCloudStoreRequest,
-        },
-        firebolt::{
+        }, firebolt::{
             fb_advertising::{AdvertisingRequest, AdvertisingResponse},
             fb_authentication::TokenResult,
             fb_keyboard::{KeyboardSessionRequest, KeyboardSessionResponse},
@@ -58,17 +50,8 @@ use crate::{
             fb_metrics::{BehavioralMetricRequest, MetricsRequest},
             fb_pin::{PinChallengeRequestWithContext, PinChallengeResponse},
             fb_secure_storage::{SecureStorageRequest, SecureStorageResponse},
-            fb_telemetry::{OperationalMetricRequest, TelemetryPayload},
-        },
-        gateway::rpc_gateway_api::RpcRequest,
-        manifest::device_manifest::AppLibraryEntry,
-        protocol::BridgeProtocolRequest,
-        pubsub::{PubSubEvents, PubSubRequest, PubSubResponse},
-        session::{AccountSessionRequest, AccountSessionResponse, SessionTokenRequest},
-        settings::{SettingValue, SettingsRequest},
-        status_update::ExtnStatus,
-        storage_property::StorageManagerRequest,
-        usergrant_entry::UserGrantsStoreRequest,
+            fb_telemetry::TelemetryPayload,
+        }, gateway::rpc_gateway_api::RpcRequest, manifest::device_manifest::AppLibraryEntry, observability::operational_metrics::OperationalMetricRequest, protocol::BridgeProtocolRequest, pubsub::{PubSubEvents, PubSubRequest, PubSubResponse}, session::{AccountSessionRequest, AccountSessionResponse, SessionTokenRequest}, settings::{SettingValue, SettingsRequest}, status_update::ExtnStatus, storage_property::StorageManagerRequest, usergrant_entry::UserGrantsStoreRequest
     },
     framework::ripple_contract::RippleContract,
     utils::error::RippleError,

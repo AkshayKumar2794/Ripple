@@ -22,24 +22,50 @@ use ripple_sdk::{
 pub struct LoadDeviceManifestStep;
 
 impl LoadDeviceManifestStep {
-    pub fn get_manifest() -> DeviceManifest {
-        let r = try_manifest_files();
-        if let Ok(r) = r {
-            return r;
-        }
+    pub fn get_manifest(manifest_content: Option<String>) -> DeviceManifest {
+        if let Some(content) = manifest_content {
+            DeviceManifest::load_from_content(content)
+                .expect("Need Valid Device Manifest")
+                .1
+        } else {
+            let r = try_manifest_files();
+            if let Ok(r) = r {
+                return r;
+            }
 
-        r.expect("Need valid Device Manifest")
+            r.expect("Need valid Device Manifest")
+        }
     }
 }
 
 type DeviceManifestLoader = Vec<fn() -> Result<(String, DeviceManifest), RippleError>>;
 
+#[cfg(test)]
+pub fn message() {
+    println!("test")
+}
+#[cfg(feature = "local_dev")]
+pub fn message() {
+    println!("local_dev")
+}
+#[cfg(not(feature = "local_dev"))]
+#[cfg(not(test))]
+pub fn message() {
+    println!("prod")
+}
+
 fn try_manifest_files() -> Result<DeviceManifest, RippleError> {
+    message();
+    let f = vec![load_from_env, load_from_home];
+
     let dm_arr: DeviceManifestLoader = if cfg!(feature = "local_dev") {
+        println!("1");
         vec![load_from_env, load_from_home]
     } else if cfg!(test) {
+        println!("2");
         vec![load_from_env]
     } else {
+        println!("3");
         vec![load_from_etc]
     };
 

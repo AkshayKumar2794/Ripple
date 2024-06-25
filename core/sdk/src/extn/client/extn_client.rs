@@ -71,7 +71,13 @@ use super::{
 /// 5. `request_processors` - Map of request processors used for Request process handling
 /// 6. `event_processors` - Map of event processors used for Event Process handling
 ///
-
+#[cfg(feature = "extension_client_mock")]
+#[derive(Clone, Debug)]
+pub struct WhenThen {
+    pub message: crate::extn::extn_client_message::ExtnRequest,
+    pub response: ExtnResponse,
+    pub times: u16,
+}
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct ExtnClient {
@@ -83,6 +89,8 @@ pub struct ExtnClient {
     request_processors: Arc<RwLock<HashMap<String, MSender<ExtnMessage>>>>,
     event_processors: Arc<RwLock<HashMap<String, Vec<MSender<ExtnMessage>>>>>,
     ripple_context: Arc<RwLock<RippleContext>>,
+    #[cfg(feature = "extension_client_mock")]
+    when_thens: Vec<WhenThen>,
 }
 
 fn add_stream_processor<P>(id: String, context: P, map: Arc<RwLock<HashMap<String, P>>>) {
@@ -111,7 +119,6 @@ pub fn remove_processor<P>(id: String, map: Arc<RwLock<HashMap<String, P>>>) {
     let sender = processor_state.remove(&id);
     drop(sender);
 }
-
 impl ExtnClient {
     /// Creates a new ExtnClient to be used by Extensions during initialization.
     ///
@@ -129,7 +136,44 @@ impl ExtnClient {
             request_processors: Arc::new(RwLock::new(HashMap::new())),
             event_processors: Arc::new(RwLock::new(HashMap::new())),
             ripple_context: Arc::new(RwLock::new(RippleContext::default())),
+            #[cfg(feature = "extension_client_mock")]
+            when_thens: vec![],
         }
+    }
+    #[cfg(feature = "extension_client_mock")]
+    pub fn new_mock() -> ExtnClient {
+        let (tx, rx) = async_channel::unbounded();
+        let mock_sender = ExtnSender::new(
+            tx,
+            ExtnId::get_main_target("main".into()),
+            vec!["context".to_string()],
+            Vec::new(),
+            Some(HashMap::new()),
+        );
+        ExtnClient {
+            receiver: rx,
+            sender: mock_sender,
+            extn_sender_map: Arc::new(RwLock::new(HashMap::new())),
+            contract_map: Arc::new(RwLock::new(HashMap::new())),
+            response_processors: Arc::new(RwLock::new(HashMap::new())),
+            request_processors: Arc::new(RwLock::new(HashMap::new())),
+            event_processors: Arc::new(RwLock::new(HashMap::new())),
+            ripple_context: Arc::new(RwLock::new(RippleContext::default())),
+            when_thens: vec![],
+        }
+    }
+    #[cfg(feature = "extension_client_mock")]
+    pub fn when_then(
+        mut self,
+        when: crate::extn::extn_client_message::ExtnRequest,
+        then: ExtnResponse,
+        times: u16,
+    ) -> () {
+        self.when_thens.push(WhenThen {
+            message: when,
+            response: then,
+            times,
+        });
     }
 
     /// Adds a new request processor reference to the internal map of processors
@@ -137,6 +181,7 @@ impl ExtnClient {
     /// Uses the capability provided by the Processor for registration
     ///
     /// Also starts the thread in the processor to accept incoming requests.
+    ///
     pub fn add_request_processor(&mut self, mut processor: impl ExtnRequestProcessor) {
         let contracts = if let Some(multiple_contracts) = processor.fulfills_mutiple() {
             multiple_contracts
@@ -763,6 +808,81 @@ impl ExtnClient {
     }
 }
 
+// #[cfg(feature ="mocks")]
+// pub mod mocks {
+//     use super::*;
+//     use async_channel::Receiver;
+
+//     use crate::{extn::{client::extn_client::ExtnClient, extn_client_message::{ExtnMessage, ExtnPayloadProvider}}, utils::error::RippleError};
+//     impl ExtnClient {
+
+//         pub async fn request(
+//             &mut self,
+//             payload: impl ExtnPayloadProvider,
+//         ) -> Result<ExtnMessage, RippleError> {
+//             todo!()
+//         }
+
+//         pub async fn initialize(&self) {
+//             todo!()
+//         }
+
+//         pub fn new(receiver: CReceiver<CExtnMessage>, sender: ExtnSender) -> ExtnClient {
+//             ExtnClient {
+//                 receiver,
+//                 sender,
+//                 extn_sender_map: Arc::new(RwLock::new(HashMap::new())),
+//                 contract_map: Arc::new(RwLock::new(HashMap::new())),
+//                 response_processors: Arc::new(RwLock::new(HashMap::new())),
+//                 request_processors: Arc::new(RwLock::new(HashMap::new())),
+//                 event_processors: Arc::new(RwLock::new(HashMap::new())),
+//                 ripple_context: Arc::new(RwLock::new(RippleContext::default())),
+//             }
+//         }
+
+//         pub fn has_internet(&self) -> bool {
+//             todo!()
+//         }
+
+//         pub fn get_features(&self) -> Vec<String> {
+//             todo!()
+//         }
+//         pub fn get_metrics_context(&self) -> Option<MetricsContext>  {
+//             todo!()
+//         }
+//         pub async fn send_message(&mut self, msg: ExtnMessage) -> RippleResponse {
+//             todo!()
+//         }
+//         pub async fn standalone_request<T: ExtnPayloadProvider>(
+//             &self,
+//             payload: impl ExtnPayloadProvider,
+//             timeout_in_msecs: u64,
+//         ) -> Result<T, RippleError> {
+//             todo!()
+//         }
+//         pub async fn respond(
+//             &mut self,
+//             req: ExtnMessage,
+//             response: ExtnResponse,
+//         ) -> Result<(), RippleError> {
+//             todo!()
+//         }
+//         pub fn request_transient(&self, payload: impl ExtnPayloadProvider) -> RippleResponse {
+//             todo!()
+//         }
+//         pub fn add_request_processor(&mut self, mut processor: impl ExtnRequestProcessor) {
+//             todo!()
+//         }
+//         pub fn get_bool_config(&self, key: &str) -> bool {
+//             todo!()
+//         }
+//         pub fn event(&self, event: impl ExtnPayloadProvider) -> Result<(), RippleError> {
+//             todo!()
+//         }
+
+//     }
+
+// }
 #[cfg(test)]
 pub mod tests {
     use super::*;

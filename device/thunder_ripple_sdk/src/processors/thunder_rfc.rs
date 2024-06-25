@@ -32,9 +32,9 @@ use ripple_sdk::{
         },
         extn_client_message::{ExtnMessage, ExtnResponse},
     },
-    log::error,
+    log::{debug, error},
     serde_json::{self, json},
-    tokio::sync::{mpsc::Receiver as MReceiver, mpsc::Sender as MSender},
+    tokio::sync::mpsc::{Receiver as MReceiver, Sender as MSender},
     utils::error::RippleError,
 };
 use serde::{Deserialize, Serialize};
@@ -115,11 +115,15 @@ impl ExtnRequestProcessor for ThunderRFCProcessor {
                 params: Some(DeviceChannelParams::Json(rfc_request)),
             })
             .await;
+        debug!("thunder rfc response: {:?}", resp);
         Self::respond(
             state.get_client(),
             msg,
             match serde_json::from_value::<ThunderRFCResponse>(resp.message) {
-                Ok(rfc_response) => rfc_response.get_extn_response(&extracted_message),
+                Ok(rfc_response) => {
+                    debug!("successful rfc_response {:?}", rfc_response);
+                    rfc_response.get_extn_response(&extracted_message)
+                }
                 Err(e) => {
                     error!("rfc serialization error {:?}", e);
                     ExtnResponse::Error(RippleError::InvalidOutput)
@@ -128,5 +132,22 @@ impl ExtnRequestProcessor for ThunderRFCProcessor {
         )
         .await
         .is_ok()
+    }
+}
+#[cfg(test)]
+pub mod tests {
+    use crate::processors::thunder_rfc::ThunderRFCResponse;
+    use ripple_sdk::serde_json;
+    use serde_json::json;
+
+    #[test]
+    pub fn test_rfc_parsing() {
+        let result = json!({
+            "RFCConfig" : {
+                "foo" : "baz"
+            }
+        });
+
+        assert!(serde_json::from_value::<ThunderRFCResponse>(result).is_ok());
     }
 }

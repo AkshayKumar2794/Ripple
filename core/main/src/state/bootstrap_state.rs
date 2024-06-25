@@ -113,14 +113,17 @@ pub struct BootstrapState {
 }
 
 impl BootstrapState {
-    pub fn build() -> Result<BootstrapState, RippleError> {
+    pub fn build(
+        device_manifest_content: Option<String>,
+        extn_manifest_content: Option<String>,
+    ) -> Result<BootstrapState, RippleError> {
         let channels_state = ChannelsState::new();
         let client = RippleClient::new(channels_state.clone());
-        let device_manifest = LoadDeviceManifestStep::get_manifest();
+        let device_manifest = LoadDeviceManifestStep::get_manifest(device_manifest_content);
         let app_manifest_result =
             LoadAppLibraryStep::load_app_library(device_manifest.get_app_library_path())
-                .expect("Valid app manifest");
-        let extn_manifest = LoadExtnManifestStep::get_manifest();
+                .expect("Invalid app manifest");
+        let extn_manifest = LoadExtnManifestStep::get_manifest(extn_manifest_content);
         let extn_state = ExtnState::new(channels_state.clone(), extn_manifest.clone());
         let platform_state = PlatformState::new(
             extn_manifest,

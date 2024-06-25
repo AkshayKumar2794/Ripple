@@ -72,6 +72,7 @@ use ripple_sdk::{
     tokio::{self, sync::mpsc::Receiver},
 };
 use serde_json::{json, Value};
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 use crate::{
     processor::metrics_processor::send_metric_for_app_state_change,
@@ -90,7 +91,6 @@ use crate::{
         session_state::{PendingSessionInfo, Session},
     },
     utils::rpc_utils::rpc_await_oneshot,
-    SEMVER_LIGHTWEIGHT,
 };
 
 const APP_ID_TITLE_FILE_NAME: &str = "appInfo.json";
@@ -551,7 +551,7 @@ impl DelegatedLauncherHandler {
 
         let context = BehavioralMetricContext {
             app_id: app_id.to_string(),
-            app_version: SEMVER_LIGHTWEIGHT.to_string(),
+            app_version: crate::state::metrics_state::SEMVER_LIGHTWEIGHT.to_string(),
             partner_id: String::from("partner.id.not.set"),
             app_session_id: String::from("app_session_id.not.set"),
             durable_app_id: app_id.to_string(),

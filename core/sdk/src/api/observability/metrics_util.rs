@@ -1,8 +1,10 @@
 use crate::{
-    api::{firebolt::fb_metrics::{
-            get_metrics_tags, InteractionType, Tag,
-            SERVICE_METRICS_SEND_REQUEST_TIMEOUT_MS,
-        }, observability::operational_metrics::{OperationalMetricRequest, Timer, TimerType}},
+    api::{
+        firebolt::fb_metrics::{
+            get_metrics_tags, InteractionType, Tag, SERVICE_METRICS_SEND_REQUEST_TIMEOUT_MS,
+        },
+        observability::operational_metrics::{OperationalMetricRequest, Timer, TimerType},
+    },
     extn::{client::extn_client::ExtnClient, extn_client_message::ExtnResponse},
     utils::error::RippleError,
 };

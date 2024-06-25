@@ -23,9 +23,7 @@ use crate::{
     framework::ripple_contract::RippleContract,
 };
 
-use super::fb_metrics::{
-     ErrorParams, ErrorType, FlatMapValue, Param, SystemErrorParams,
-};
+use super::fb_metrics::{ErrorParams, ErrorType, FlatMapValue, Param, SystemErrorParams};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct AppLoadStart {
@@ -198,7 +196,6 @@ impl ExtnPayloadProvider for TelemetryPayload {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -291,7 +288,10 @@ mod tests {
     }
     use super::*;
     use crate::{
-        api::{firebolt::fb_telemetry::{AppLoadStart, TelemetryPayload}, observability::operational_metrics::OperationalMetricRequest},
+        api::{
+            firebolt::fb_telemetry::{AppLoadStart, TelemetryPayload},
+            observability::operational_metrics::OperationalMetricRequest,
+        },
         utils::test_utils::test_extn_payload_provider,
     };
 
@@ -317,4 +317,3 @@ mod tests {
         test_extn_payload_provider(telemetry_payload, contract_type);
     }
 }
-

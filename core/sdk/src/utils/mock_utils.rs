@@ -90,7 +90,6 @@ impl ExtnPayloadProvider for MockRequest {
         RippleContract::Internal
     }
 }
-
 pub fn get_mock_extn_client(id: ExtnId) -> ExtnClient {
     let (s, receiver) = unbounded();
     let mock_sender = ExtnSender::new(

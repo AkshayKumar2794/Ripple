@@ -29,7 +29,8 @@ use jsonrpsee::{
 };
 use ripple_sdk::{
     api::{
-        gateway::rpc_gateway_api::{ApiMessage, RpcRequest}, observability::operational_metrics::Timer,
+        gateway::rpc_gateway_api::{ApiMessage, RpcRequest},
+        observability::operational_metrics::Timer,
     },
     chrono::Utc,
     extn::extn_client_message::ExtnMessage,

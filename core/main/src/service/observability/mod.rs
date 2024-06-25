@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::state::platform_state::PlatformState;
-use ripple_sdk::api::firebolt::fb_telemetry::OperationalMetricRequest;
+use ripple_sdk::api::observability::operational_metrics::OperationalMetricRequest;
 static mut PLATFORM_STATE: Option<Arc<PlatformState>> = None;
 pub struct ObservabilityClient {}
 impl ObservabilityClient {

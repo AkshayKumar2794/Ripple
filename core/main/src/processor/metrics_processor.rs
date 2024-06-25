@@ -19,10 +19,11 @@ use ripple_sdk::{
     api::{
         distributor::distributor_privacy::DataEventType,
         firebolt::fb_metrics::{
-                AppDataGovernanceState, BehavioralMetricContext, BehavioralMetricPayload,
-                BehavioralMetricRequest, MetricsPayload, MetricsRequest,
-            },
-        gateway::rpc_gateway_api::CallContext, observability::operational_metrics::OperationalMetricRequest,
+            AppDataGovernanceState, BehavioralMetricContext, BehavioralMetricPayload,
+            BehavioralMetricRequest, MetricsPayload, MetricsRequest,
+        },
+        gateway::rpc_gateway_api::CallContext,
+        observability::operational_metrics::OperationalMetricRequest,
     },
     async_trait::async_trait,
     extn::{
@@ -39,7 +40,6 @@ use ripple_sdk::{
 use crate::{
     service::{data_governance::DataGovernance, telemetry_builder::TelemetryBuilder},
     state::platform_state::PlatformState,
-    SEMVER_LIGHTWEIGHT,
 };
 
 pub async fn send_metric(
@@ -78,10 +78,9 @@ pub async fn update_app_context(
     if let Some(app) = ps.app_manager_state.get(&ctx.app_id) {
         context.app_session_id = app.loaded_session_id.to_owned();
         context.app_user_session_id = app.active_session_id;
-        context.app_version = ps
-            .version
-            .clone()
-            .unwrap_or(String::from(SEMVER_LIGHTWEIGHT));
+        context.app_version = ps.version.clone().unwrap_or(String::from(
+            crate::state::metrics_state::SEMVER_LIGHTWEIGHT,
+        ));
     }
     if let Some(session) = ps.session_state.get_account_session() {
         context.partner_id = session.id;
@@ -130,10 +129,9 @@ pub async fn send_metric_for_app_state_change(
                 if let Some(app) = ps.app_manager_state.get(app_id) {
                     context.app_session_id = app.loaded_session_id.to_owned();
                     context.app_user_session_id = app.active_session_id;
-                    context.app_version = ps
-                        .version
-                        .clone()
-                        .unwrap_or(String::from(SEMVER_LIGHTWEIGHT));
+                    context.app_version = ps.version.clone().unwrap_or(String::from(
+                        crate::state::metrics_state::SEMVER_LIGHTWEIGHT,
+                    ));
                 }
                 context.governance_state = Some(AppDataGovernanceState::new(tag_name_set));
                 context.partner_id = session.clone().id;

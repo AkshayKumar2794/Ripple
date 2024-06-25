@@ -25,6 +25,7 @@ use jsonrpsee::ws_client::WsClientBuilder;
 use jsonrpsee::core::{async_trait, error::Error as JsonRpcError};
 use jsonrpsee::types::ParamsSer;
 use regex::Regex;
+use ripple_sdk::log::debug;
 use ripple_sdk::serde_json::json;
 use ripple_sdk::{
     api::device::device_operator::DeviceResponseMessage,
@@ -193,18 +194,28 @@ impl DeviceOperator for ThunderClient {
     async fn call(&self, request: DeviceCallRequest) -> DeviceResponseMessage {
         let (tx, rx) = oneshot::channel::<DeviceResponseMessage>();
         let message = ThunderMessage::ThunderCallMessage(ThunderCallMessage {
-            method: request.method,
-            params: request.params,
+            method: request.clone().method,
+            params: request.clone().params,
             callback: tx,
         });
+
         self.send_message(message).await;
 
         match rx.await {
-            Ok(response) => response,
-            Err(_) => DeviceResponseMessage {
-                message: Value::Null,
-                sub_id: None,
-            },
+            Ok(response) => {
+                debug!(
+                    "success thunder request={:?},response={:?}",
+                    request, response
+                );
+                response
+            }
+            Err(err) => {
+                debug!("failure thunder request={:?},response={:?}", request, err);
+                DeviceResponseMessage {
+                    message: Value::Null,
+                    sub_id: None,
+                }
+            }
         }
     }
 
@@ -412,6 +423,7 @@ impl ThunderClient {
             return;
         }
         let params = thunder_message.params;
+        debug!("thunder_call thunder_message={:?}", thunder_message.method);
         match params {
             Some(p) => match p {
                 DeviceChannelParams::Bool(b) => {
@@ -759,6 +771,7 @@ impl<'a> ThunderParamRequest<'a> {
 
 fn return_message(callback: OneShotSender<DeviceResponseMessage>, response: Value) {
     let msg = DeviceResponseMessage::call(response);
+    debug!("thunder_call response={:?}", msg);
     oneshot_send_and_log(callback, msg, "returning message");
 }
 

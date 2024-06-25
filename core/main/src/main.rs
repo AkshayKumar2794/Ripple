@@ -39,7 +39,7 @@ async fn main() {
         return;
     }
     info!("version {}", SEMVER_LIGHTWEIGHT);
-    let bootstate = BootstrapState::build().expect("Failure to init state for bootstrap");
+    let bootstate = BootstrapState::build(None, None).expect("Failure to init state for bootstrap");
 
     // bootstrap
     match boot(bootstate).await {

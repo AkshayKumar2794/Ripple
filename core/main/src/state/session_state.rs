@@ -83,6 +83,7 @@ impl Session {
 ///
 /// ### To add an App Id
 /// ```
+/// use main::state::session_state::SessionState;
 /// let session_state = SessionState::default();
 /// session_state("1234-1234".into(), "SomeCoolAppId".into());
 /// ```

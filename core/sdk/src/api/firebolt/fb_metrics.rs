@@ -22,7 +22,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    api::{gateway::rpc_gateway_api::CallContext, observability::operational_metrics::{Counter, Timer}, session::AccountSession},
+    api::{
+        gateway::rpc_gateway_api::CallContext,
+        observability::operational_metrics::{Counter, Timer},
+        session::AccountSession,
+    },
     extn::{
         client::extn_client::ExtnClient,
         extn_client_message::{ExtnPayload, ExtnPayloadProvider, ExtnRequest, ExtnResponse},
@@ -1207,7 +1211,7 @@ mod tests {
     }
     #[test]
     fn test_counter_to_extn_request() {
-        let counter = Counter::new("tester".into(), 22,None);
+        let counter = Counter::new("tester".into(), 22, None);
         let request = counter.to_extn_request();
         assert_eq!(request, OperationalMetricRequest::Counter(counter));
     }

@@ -55,7 +55,8 @@ use crate::{
 ///
 /// # Examples
 /// ```
-/// use crate::firebolt::firebolt_gateway::FireboltGatewayCommand;
+/// use main::firebolt::firebolt_gateway::FireboltGatewayCommand;
+/// use main::service::extn::ripple_client::RippleClient;
 /// fn send_gateway_command(msg: FireboltGatewayCommand) {
 ///     let client = RippleClient::new();
 ///     client.send_gateway_command()

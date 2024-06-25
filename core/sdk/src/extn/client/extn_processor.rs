@@ -253,6 +253,10 @@ pub trait ExtnRequestProcessor: ExtnStreamProcessor + Send + Sync + 'static {
                 }
             }
         });
+        debug!(
+            "started request processor for contract {}",
+            self.contract().as_clear_string()
+        );
     }
 
     async fn handle_error(

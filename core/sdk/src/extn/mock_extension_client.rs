@@ -160,7 +160,6 @@ impl<T> MockProcessorClient<T> {
 }
 
 pub struct MockExtnClient {}
-
 impl MockExtnClient {
     pub fn client(response_sender: Sender<CExtnMessage>) -> ExtnClient {
         let (_, ignore) = unbounded();

@@ -82,7 +82,7 @@ impl Counter {
 }
 impl From<Counter> for OperationalMetricRequest {
     fn from(counter: Counter) -> Self {
-        OperationalMetricRequest::Counter(counter   )
+        OperationalMetricRequest::Counter(counter)
     }
 }
 
@@ -202,13 +202,11 @@ impl Timer {
     }
 }
 
-
 impl From<Timer> for OperationalMetricRequest {
     fn from(timer: Timer) -> Self {
         OperationalMetricRequest::Timer(timer)
     }
 }
-
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum OperationalMetricRequest {

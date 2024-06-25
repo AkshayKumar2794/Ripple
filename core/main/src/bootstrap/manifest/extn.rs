@@ -22,8 +22,14 @@ use ripple_sdk::{
 pub struct LoadExtnManifestStep;
 
 impl LoadExtnManifestStep {
-    pub fn get_manifest() -> ExtnManifest {
-        try_manifest_files().expect("Need valid extn manifest")
+    pub fn get_manifest(manifest_content: Option<String>) -> ExtnManifest {
+        if let Some(content) = manifest_content {
+            ExtnManifest::load_from_content(content)
+                .expect("Need Valid Extn Manifest")
+                .1
+        } else {
+            try_manifest_files().expect("Need valid extn manifest")
+        }
     }
 }
 

@@ -27,7 +27,9 @@ use crate::{
 };
 
 pub type MockData = HashMap<String, Vec<ParamResponse>>;
-
+pub fn str_2_mock_data(mock_data: &str) -> MockData {
+    serde_json::from_str::<MockData>(mock_data).unwrap()
+}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ParamResponse {
     pub params: Option<Value>,

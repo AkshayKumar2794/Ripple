@@ -21,6 +21,7 @@ members = [
     "core/sdk",
     "core/tdk",
     "device/thunder_ripple_sdk",
+    "device/mock_device",
     "core/main",
     "core/launcher",
     "device/thunder",

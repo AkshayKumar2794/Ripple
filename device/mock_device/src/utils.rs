@@ -87,7 +87,7 @@ async fn platform_gateway_url(client: &mut ExtnClient) -> Result<Url, MockDevice
     Err(BootFailedError::GetPlatformGatewayFailed)?
 }
 
-fn is_valid_host(host: Option<Host<&str>>) -> bool {
+pub fn is_valid_host(host: Option<Host<&str>>) -> bool {
     match host {
         Some(Host::Ipv4(ipv4)) => ipv4.is_loopback() || ipv4.is_unspecified(),
         _ => false,

@@ -70,7 +70,7 @@ fn init_library() -> CExtnMetadata {
     extn_metadata.into()
 }
 
-export_extn_metadata!(CExtnMetadata, init_library);
+//export_extn_metadata!(CExtnMetadata, init_library);
 
 fn start_launcher(sender: ExtnSender, receiver: CReceiver<CExtnMessage>) {
     let _ = init_logger(EXTN_NAME.into());
@@ -117,7 +117,7 @@ fn init_extn_builder() -> ExtnChannelBuilder {
     }
 }
 
-export_channel_builder!(ExtnChannelBuilder, init_extn_builder);
+//export_channel_builder!(ExtnChannelBuilder, init_extn_builder);
 
 fn get_rpc_extns(sender: ExtnSender, receiver: CReceiver<CExtnMessage>) -> Methods {
     let mut methods = Methods::new();
@@ -141,7 +141,7 @@ fn init_jsonrpsee_builder() -> JsonRpseeExtnBuilder {
     }
 }
 
-export_jsonrpc_extn_builder!(JsonRpseeExtnBuilder, init_jsonrpsee_builder);
+//export_jsonrpc_extn_builder!(JsonRpseeExtnBuilder, init_jsonrpsee_builder);
 
 #[cfg(test)]
 mod tests {

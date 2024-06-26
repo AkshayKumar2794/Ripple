@@ -41,10 +41,10 @@ use tokio_tungstenite::{
 };
 
 use crate::{
-    errors::MockServerWebSocketError,
+    errors::{BootFailedError, MockDeviceError, MockServerWebSocketError},
     mock_config::MockConfig,
-    mock_data::{MockData, MockDataError, ParamResponse, ResponseSink},
-    utils::is_value_jsonrpc,
+    mock_data::{str_2_mock_data, MockData, MockDataError, ParamResponse, ResponseSink},
+    utils::{is_valid_host, is_value_jsonrpc},
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -151,6 +151,41 @@ impl MockWebSocketServer {
         })
     }
 
+    pub async fn create_ws_server(
+        gateway_uri: &str,
+        mock_data: &str,
+        #[cfg(features = "thunder_call_recorder")] transcript_filename: &str,
+    ) -> Result<Arc<MockWebSocketServer>, MockDeviceError> {
+        let gateway = url::Url::parse(gateway_uri).unwrap();
+
+        if gateway.scheme() != "ws" {
+            return Err(BootFailedError::BadUrlScheme)?;
+        }
+
+        if !is_valid_host(gateway.host()) {
+            return Err(BootFailedError::BadHostname)?;
+        }
+
+        let mock_config = MockConfig::default();
+
+        let mut server_config = WsServerParameters::new();
+        let mock_data_v2 = str_2_mock_data(mock_data);
+        server_config
+            .port(gateway.port().unwrap_or(0))
+            .path(gateway.path());
+        let ws_server = MockWebSocketServer::new(
+            mock_data_v2,
+            server_config,
+            mock_config,
+            #[cfg(features = "thunder_call_recorder")]
+            Some(Transcript::new(transcript_filename.to_string())),
+        )
+        .await
+        .map_err(BootFailedError::ServerStartFailed)?;
+        let ws_server = Arc::new(ws_server);
+
+        Ok(ws_server)
+    }
     pub fn port(&self) -> u16 {
         self.port
     }

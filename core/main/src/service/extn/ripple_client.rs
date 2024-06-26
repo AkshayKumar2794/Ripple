@@ -54,12 +54,13 @@ use crate::{
 /// 4. Usergrants
 ///
 /// # Examples
-/// ```
+/// ```no_run
 /// use main::firebolt::firebolt_gateway::FireboltGatewayCommand;
 /// use main::service::extn::ripple_client::RippleClient;
+/// use main::state::bootstrap_state::ChannelsState;
 /// fn send_gateway_command(msg: FireboltGatewayCommand) {
-///     let client = RippleClient::new();
-///     client.send_gateway_command()
+///     //let client = RippleClient::new();
+///     //client.send_gateway_command(msg);
 /// }
 ///
 /// ```

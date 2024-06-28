@@ -352,7 +352,7 @@ impl MockWebSocketServer {
         );
         if let Ok(request) = serde_json::from_value::<JsonRpcApiRequest>(request_message.clone()) {
             if let Some(id) = request.id {
-                debug!("{}", self.config.activate_all_plugins);
+                debug!("activate_all_plugins={}", self.config.activate_all_plugins);
                 if self.config.activate_all_plugins
                     && request.method.contains("Controller.1.status")
                 {
@@ -391,6 +391,12 @@ impl MockWebSocketServer {
 
     fn responses_for_key_v2(&self, req: &JsonRpcApiRequest) -> Option<ParamResponse> {
         let mock_data = self.mock_data_v2.read().unwrap();
+        debug!(
+            "looking for {}, {:?} in {:?}",
+            req.method,
+            req.params,
+            mock_data.clone()
+        );
         if let Some(v) = mock_data.get(&req.method.to_lowercase()).cloned() {
             if v.len() == 1 {
                 return v.first().cloned();
@@ -408,6 +414,10 @@ impl MockWebSocketServer {
                 }
             }
         }
+        debug!(
+            "no v2 responses found for: {}, {:?}",
+            req.method, req.params
+        );
         None
     }
 

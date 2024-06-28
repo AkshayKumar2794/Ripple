@@ -75,6 +75,21 @@ pub async fn boot(state: BootstrapState) -> RippleResponse {
     execute_step(FireboltGatewayStep, &bootstrap).await?;
     Ok(())
 }
+pub async fn boot_mocks(state: BootstrapState) -> RippleResponse {
+    let bootstrap = Bootstrap::new(state);
+    execute_step(StartCommunicationBroker, &bootstrap).await?;
+    execute_step(SetupExtnClientStep, &bootstrap).await?;
+    //execute_step(LoadExtensionMetadataStep, &bootstrap).await?;
+    //execute_step(LoadExtensionsStep, &bootstrap).await?;
+    execute_step(StartExtnChannelsStep, &bootstrap).await?;
+    //execute_step(StartAppManagerStep, &bootstrap).await?;
+    //execute_step(LoadDistributorValuesStep, &bootstrap).await?;
+    execute_step(StartOtherBrokers, &bootstrap).await?;
+    // execute_step(CheckLauncherStep, &bootstrap).await?;
+    // execute_step(StartWsStep, &bootstrap).await?;
+    // execute_step(FireboltGatewayStep, &bootstrap).await?;
+    Ok(())
+}
 
 async fn execute_step<T: Bootstep<BootstrapState>>(
     step: T,

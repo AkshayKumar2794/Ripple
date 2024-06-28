@@ -48,22 +48,23 @@ impl Bootstep<BootstrapState> for SetupExtnClientStep {
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
         let client = state.platform_state.get_client();
         client.init().await;
+
         // Main is now ready to take in config requests from extensions
         client.add_request_processor(ConfigRequestProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(PinProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(KeyboardProcessor::new(state.platform_state.clone()));
-        client.add_event_processor(ExtnStatusProcessor::new(state.extn_state.clone()));
-        client.add_event_processor(AppEventsProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(StorageManagerProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(StoreUserGrantsProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(StorePrivacySettingsProcessor::new(
-            state.platform_state.clone(),
-        ));
-        client.add_request_processor(AuthorizedInfoProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(AccountLinkProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(SettingsProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(MetricsProcessor::new(state.platform_state.clone()));
-        client.add_request_processor(OpMetricsProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(PinProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(KeyboardProcessor::new(state.platform_state.clone()));
+        //client.add_event_processor(ExtnStatusProcessor::new(state.extn_state.clone()));
+        //client.add_event_processor(AppEventsProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(StorageManagerProcessor::new(state.platform_state.clone()));
+        // client.add_request_processor(StoreUserGrantsProcessor::new(state.platform_state.clone()));
+        // client.add_request_processor(StorePrivacySettingsProcessor::new(
+        //     state.platform_state.clone(),
+        // ));
+        // client.add_request_processor(AuthorizedInfoProcessor::new(state.platform_state.clone()));
+        // client.add_request_processor(AccountLinkProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(SettingsProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(MetricsProcessor::new(state.platform_state.clone()));
+        //client.add_request_processor(OpMetricsProcessor::new(state.platform_state.clone()));
         Ok(())
     }
 }

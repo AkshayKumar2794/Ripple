@@ -1,0 +1,15 @@
+[Unit]
+Description=Firebolt reference implementation
+After=wpeframework.service
+
+[Service]
+Type=notify
+Environment="RUST_LOG=info"
+EnvironmentFile=-/opt/ripple.conf
+ExecStart=/usr/bin/ripple
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

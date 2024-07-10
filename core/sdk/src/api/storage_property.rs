@@ -128,7 +128,6 @@ pub const EVENT_SECOND_SCREEN_FRIENDLY_NAME_CHANGED: &str = "secondscreen.onFrie
 pub const EVENT_ADVERTISING_POLICY_CHANGED: &str = "advertising.onPolicyChanged";
 pub const EVENT_ADVERTISING_SKIP_RESTRICTION_CHANGED: &str = "advertising.onSkipRestrictionChanged";
 pub const EVENT_ADVERTISING_SKIP_RESTRICTION: &str = "advertising.setSkipRestriction";
-pub const EVENT_PREFERRED_AUDIO_LANGUAGES: &str = "Localization.onPreferredAudioLanguagesChanged";
 pub const EVENT_CC_PREFERRED_LANGUAGES: &str = "ClosedCaptions.onPreferredLanguagesChanged";
 pub const EVENT_AUDIO_DESCRIPTION_SETTINGS_CHANGED: &str =
     "Accessibility.onAudioDescriptionSettingsChanged";
@@ -417,12 +416,6 @@ const PROPERTY_AUDIO_DESCRIPTION_ENABLED: PropertyData = PropertyData {
     event_names: Some(&[EVENT_AUDIO_DESCRIPTION_SETTINGS_CHANGED]),
 };
 
-const PROPERTY_PREFERRED_AUDIO_LANGUAGES: PropertyData = PropertyData {
-    key: KEY_PREFERRED_AUDIO_LANGUAGES,
-    namespace: NAMESPACE_LOCALIZATION,
-    event_names: Some(&[EVENT_PREFERRED_AUDIO_LANGUAGES]),
-};
-
 const PROPERTY_CC_PREFERRED_LANGUAGES: PropertyData = PropertyData {
     key: KEY_PREFERRED_AUDIO_LANGUAGES,
     namespace: NAMESPACE_CLOSED_CAPTIONS,
@@ -487,7 +480,6 @@ pub enum StorageProperty {
     PartnerExclusions,
     SkipRestriction,
     AudioDescriptionEnabled,
-    PreferredAudioLanguages,
     CCPreferredLanguages,
 }
 
@@ -556,7 +548,6 @@ impl StorageProperty {
             StorageProperty::PartnerExclusions => PROPERTY_DATA_PARTNER_EXCLUSIONS,
             StorageProperty::SkipRestriction => PROPERTY_DATA_SKIP_RESTRICTION,
             StorageProperty::AudioDescriptionEnabled => PROPERTY_AUDIO_DESCRIPTION_ENABLED,
-            StorageProperty::PreferredAudioLanguages => PROPERTY_PREFERRED_AUDIO_LANGUAGES,
             StorageProperty::CCPreferredLanguages => PROPERTY_CC_PREFERRED_LANGUAGES,
         }
     }

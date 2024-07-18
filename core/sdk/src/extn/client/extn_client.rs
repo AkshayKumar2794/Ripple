@@ -648,6 +648,10 @@ impl ExtnClient {
         let id = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel();
         add_single_processor(id.clone(), Some(tx), self.response_processors.clone());
+        debug!(
+            "main_internal_request: conctract={:?}",
+            payload.get_contract()
+        );
         let other_sender = self.get_extn_sender_with_contract(payload.get_contract());
         self.sender
             .send_request(id, payload, other_sender, Some(self.sender.tx.clone()))?;
@@ -757,6 +761,15 @@ impl ExtnClient {
     pub fn get_uint_config(&self, key: &str) -> Option<u64> {
         if let Some(s) = self.sender.get_config(key) {
             if let Ok(v) = s.parse() {
+                return Some(v);
+            }
+        }
+        None
+    }
+
+    pub fn get_string_array_config(&self, key: &str) -> Option<Vec<String>> {
+        if let Some(s) = self.sender.get_config(key) {
+            if let Ok(v) = serde_json::from_str(s.as_str()) {
                 return Some(v);
             }
         }

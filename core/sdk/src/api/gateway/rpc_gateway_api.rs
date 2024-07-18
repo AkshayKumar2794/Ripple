@@ -65,6 +65,22 @@ pub struct CallContext {
     pub gateway_secure: bool,
 }
 
+
+impl Default for CallContext {
+    fn default() -> Self {
+        CallContext {
+            session_id: "unset.session.id".to_owned(),
+            request_id: "-1".to_owned(),
+            app_id: "default.app_od".to_owned(),
+            call_id: 1,
+            protocol: ApiProtocol::JsonRpc,
+            method: "unset.module.method".to_owned(),
+            cid: Some("unset.cid".to_owned()),
+            gateway_secure: true,
+        }
+    }
+}
+
 impl CallContext {
     // TODO: refactor this to use less arguments
     #[allow(clippy::too_many_arguments)]
@@ -222,6 +238,15 @@ pub struct RpcRequest {
     pub ctx: CallContext,
 }
 
+impl Default for RpcRequest {
+    fn default() -> Self {
+        RpcRequest {
+            method: "unset.method".to_owned(),
+            params_json: "{}".to_owned(),
+            ctx: CallContext::default(),
+        }
+    }
+}
 impl ExtnPayloadProvider for RpcRequest {
     fn get_extn_payload(&self) -> ExtnPayload {
         ExtnPayload::Request(ExtnRequest::Rpc(self.clone()))
@@ -242,7 +267,7 @@ impl ExtnPayloadProvider for RpcRequest {
 impl crate::Mockable for RpcRequest {
     fn mock() -> Self {
         RpcRequest {
-            method: "module.method".to_owned(),
+            method: "default.unset.method".to_owned(),
             params_json: "{}".to_owned(),
             ctx: CallContext::mock(),
         }

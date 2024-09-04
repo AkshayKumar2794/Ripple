@@ -559,6 +559,7 @@ pub trait EndpointBroker {
     /// Default handler method for the broker to remove the context and send it back to the
     /// client for consumption
     fn handle_jsonrpc_response(result: &[u8], callback: BrokerCallback) {
+        println!("^^^ in handle_jsonrpc_response result {:?}", result);
         let mut final_result = Err(RippleError::ParseError);
         if let Ok(data) = serde_json::from_slice::<JsonRpcApiResponse>(result) {
             final_result = Ok(BrokerOutput { data });
@@ -745,6 +746,7 @@ impl BrokerOutputForwarder {
         request: BrokerRequest,
     ) -> RippleResponse {
         // find if its event
+        println!("^^^^ in handle_non_jsonrpc_response 1");
         let method = if request.rpc.is_subscription() {
             Some(format!(
                 "{}.{}",
@@ -767,6 +769,7 @@ impl BrokerOutputForwarder {
             error: None,
             params: None,
         };
+        println!("^^^^ in handle_non_jsonrpc_response data {:?}", data);
         let output = BrokerOutput { data };
         tokio::spawn(async move { callback.sender.send(output).await });
         Ok(())

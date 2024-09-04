@@ -82,6 +82,7 @@ impl WebsocketBroker {
                     }
                 }
             } else {
+                println!("^^^ not endpoint jsonrpc statement ");
                 let cleaner_clone = non_json_rpc_map.clone();
                 tokio::spawn(async move {
                     while let Some(v) = cleaner_tr.recv().await {

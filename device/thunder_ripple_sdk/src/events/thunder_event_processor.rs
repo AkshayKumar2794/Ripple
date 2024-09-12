@@ -78,6 +78,7 @@ pub enum ThunderEventMessage {
     Audio(HashMap<AudioProfile, bool>),
     Custom(Value),
     TimeZone(TimeZoneChangedThunderEvent),
+    DisplayConnection,
 }
 impl ThunderEventMessage {
     pub fn get(event: &str, value: &Value) -> Option<Self> {
@@ -144,6 +145,9 @@ impl ThunderEventMessage {
                     if let Ok(v) = serde_json::from_value(value.clone()) {
                         return Some(ThunderEventMessage::TimeZone(v));
                     }
+                }
+                DeviceEvent::DisplayConnectionChanged => {
+                    return Some(ThunderEventMessage::DisplayConnection);
                 }
             }
         } else {

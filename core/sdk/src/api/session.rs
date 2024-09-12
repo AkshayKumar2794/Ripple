@@ -290,6 +290,7 @@ pub enum EventAdjective {
     Audio,
     SystemPowerState,
     TimeZone,
+    DisplayConnection,
 }
 
 impl ContractAdjective for EventAdjective {

@@ -37,6 +37,7 @@ impl ContextManager {
         // Setup listeners here
 
         // Setup the Session listener is session is enabled on the manifest
+        // Setup the Session listener is session is enabled on the manifest
         if ps.supports_session()
             && ps
                 .get_client()
@@ -73,6 +74,19 @@ impl ContextManager {
             .is_err()
         {
             warn!("No processor to set TimeZoneChanged status listener")
+        }
+
+        if ps
+            .get_client()
+            .send_extn_request(DeviceEventRequest {
+                event: DeviceEvent::DisplayConnectionChanged,
+                subscribe: true,
+                callback_type: DeviceEventCallback::ExtnEvent,
+            })
+            .await
+            .is_err()
+        {
+            warn!("No processor to set DisplayConnectionChanged listener",)
         }
 
         let ps_c = ps.clone();

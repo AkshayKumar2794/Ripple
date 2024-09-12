@@ -23,7 +23,8 @@ use ripple_sdk::api::{
     device::{
         device_accessibility_data::VoiceGuidanceSettings,
         device_events::{
-            INTERNET_CHANGED_EVENT, TIME_ZONE_CHANGED, VOICE_GUIDANCE_SETTINGS_CHANGED,
+            DISPLAY_CONNECTION_CHANGED, INTERNET_CHANGED_EVENT, TIME_ZONE_CHANGED,
+            VOICE_GUIDANCE_SETTINGS_CHANGED,
         },
         device_request::{InternetConnectionStatus, TimeZone, VoiceGuidanceState},
     },
@@ -39,9 +40,8 @@ use crate::{
     ripple_sdk::{
         api::device::{
             device_events::{
-                DeviceEventCallback, HDCP_CHANGED_EVENT, HDR_CHANGED_EVENT, NETWORK_CHANGED_EVENT,
-                POWER_STATE_CHANGED, SCREEN_RESOLUTION_CHANGED_EVENT,
-                VIDEO_RESOLUTION_CHANGED_EVENT,
+                DeviceEventCallback, HDR_CHANGED_EVENT, NETWORK_CHANGED_EVENT, POWER_STATE_CHANGED,
+                SCREEN_RESOLUTION_CHANGED_EVENT, VIDEO_RESOLUTION_CHANGED_EVENT,
             },
             device_request::{
                 AudioProfile, HdcpProfile, HdrProfile, NetworkResponse, SystemPowerState,
@@ -83,6 +83,9 @@ impl HDCPEventHandler {
         value: ThunderEventMessage,
         callback_type: DeviceEventCallback,
     ) {
+        if let ThunderEventMessage::DisplayConnection = value {
+            debug!("displayConnection changed");
+        }
         if let ThunderEventMessage::ActiveInput(input) = value {
             if input.active_input {
                 debug!("activeInput changed");
@@ -112,11 +115,11 @@ impl ThunderEventHandlerProvider for HDCPEventHandler {
     }
 
     fn get_mapped_event() -> String {
-        HDCP_CHANGED_EVENT.into()
+        DISPLAY_CONNECTION_CHANGED.into()
     }
 
     fn event_name() -> String {
-        "activeInputChanged".into()
+        "displayConnectionChanged".into()
     }
 
     fn module() -> String {

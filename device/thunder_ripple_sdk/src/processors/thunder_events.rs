@@ -88,6 +88,7 @@ impl ExtnStreamProcessor for ThunderOpenEventsProcessor {
             RippleContract::DeviceEvents(EventAdjective::Audio),
             RippleContract::DeviceEvents(EventAdjective::SystemPowerState),
             RippleContract::DeviceEvents(EventAdjective::TimeZone),
+            RippleContract::DeviceEvents(EventAdjective::DisplayConnection),
         ])
     }
 }
@@ -157,6 +158,11 @@ impl ExtnRequestProcessor for ThunderOpenEventsProcessor {
                 listen,
                 id.clone(),
                 TimezoneChangedEventHandler::provide(id, callback_type),
+            )),
+            DeviceEvent::DisplayConnectionChanged => Some(state.handle_listener(
+                listen,
+                id.clone(),
+                HDCPEventHandler::provide(id, callback_type),
             )),
         } {
             v.await;

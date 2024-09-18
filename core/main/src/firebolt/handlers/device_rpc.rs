@@ -215,7 +215,7 @@ pub async fn get_uid(state: &PlatformState, app_id: String) -> RpcResult<String>
         .get_persisted_migrated_state_for_app_id(&app_id)
         .is_some()
     {
-        let uid = Uuid::new_v4().to_string();
+        let uid = Uuid::new_v4().simple().to_string();
         let mut new_data = data.clone();
         new_data.value = uid.clone();
         StorageManager::set_string_for_scope(state, &new_data, None).await?;

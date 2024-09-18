@@ -226,6 +226,7 @@ pub async fn get_uid(state: &PlatformState, app_id: String) -> RpcResult<String>
     let device_id = get_device_id(state)
         .await
         .map_err(|_| rpc_err("parse error"))?;
+    println!("get_uid: device_id={:?}", device_id);
     // check if the state supports encoding
     if state.supports_encoding() {
         let response = state
@@ -246,6 +247,7 @@ pub async fn get_uid(state: &PlatformState, app_id: String) -> RpcResult<String>
                 state
                     .app_manager_state
                     .persist_migrated_state(&app_id, DEVICE_UID.to_string());
+                println!("get_uid: enc_device_id={:?}", enc_device_id);
                 return Ok(enc_device_id);
             }
         }

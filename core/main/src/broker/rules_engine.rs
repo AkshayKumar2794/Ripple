@@ -91,6 +91,8 @@ pub struct Rule {
     pub transform: RuleTransform,
     pub filter: Option<String>,
     pub endpoint: Option<String>,
+    #[serde(default)]
+    pub requests: Option<Vec<Vec<String>>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

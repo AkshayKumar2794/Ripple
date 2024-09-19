@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use jsonrpsee::types::response;
 use ripple_sdk::{
     api::{
         firebolt::fb_capabilities::JSON_RPC_STANDARD_ERROR_INVALID_PARAMS,
@@ -52,7 +53,9 @@ use crate::{
 use super::{
     event_management_utility::EventManagementUtility,
     http_broker::HttpBroker,
-    rules_engine::{jq_compile, Rule, RuleEndpoint, RuleEndpointProtocol, RuleEngine},
+    rules_engine::{
+        jq_compile, Rule, RuleEndpoint, RuleEndpointProtocol, RuleEngine, RuleTransform,
+    },
     thunder_broker::ThunderBroker,
     websocket_broker::WebsocketBroker,
 };
@@ -82,6 +85,7 @@ pub struct BrokerRequest {
     pub rpc: RpcRequest,
     pub rule: Rule,
     pub subscription_processed: Option<bool>,
+    pub compound_request_id: u64,
 }
 
 pub type BrokerSubMap = HashMap<String, Vec<BrokerRequest>>;
@@ -138,6 +142,7 @@ impl BrokerRequest {
             rpc: rpc_request.clone(),
             rule,
             subscription_processed: None,
+            compound_request_id: 0,
         }
     }
 
@@ -227,12 +232,19 @@ impl BrokerSender {
     }
 }
 
+#[derive(Debug)]
+struct CompoundRequest {
+    request: BrokerRequest,
+    response: Option<JsonRpcApiResponse>,
+    associated_ids: Vec<u64>,
+}
 #[derive(Debug, Clone)]
 pub struct EndpointBrokerState {
     endpoint_map: Arc<RwLock<HashMap<String, BrokerSender>>>,
     callback: BrokerCallback,
     request_map: Arc<RwLock<HashMap<u64, BrokerRequest>>>,
     extension_request_map: Arc<RwLock<HashMap<u64, ExtnMessage>>>,
+    comp_response_map: Arc<RwLock<HashMap<u64, CompoundRequest>>>,
     rule_engine: RuleEngine,
     cleaner_list: Arc<RwLock<Vec<BrokerCleaner>>>,
     reconnect_tx: Sender<BrokerConnectRequest>,
@@ -250,6 +262,7 @@ impl EndpointBrokerState {
             callback: BrokerCallback { sender: tx },
             request_map: Arc::new(RwLock::new(HashMap::new())),
             extension_request_map: Arc::new(RwLock::new(HashMap::new())),
+            comp_response_map: Arc::new(RwLock::new(HashMap::new())),
             rule_engine,
             cleaner_list: Arc::new(RwLock::new(Vec::new())),
             reconnect_tx,
@@ -285,8 +298,10 @@ impl EndpointBrokerState {
 
         let result = result.unwrap();
         if !result.rpc.is_subscription() {
+            println!("==> removing {:?}", id);
             let _ = self.request_map.write().unwrap().remove(&id);
         }
+        println!("==> {:?} len={:?}", id, result.compound_request_id);
         Ok(result)
     }
 
@@ -295,6 +310,22 @@ impl EndpointBrokerState {
         if let Some(mut value) = result.remove(&id) {
             value.subscription_processed = Some(true);
             let _ = result.insert(id, value);
+        }
+    }
+
+    fn update_compound_response(&self, id: u64, response: JsonRpcApiResponse) {
+        println!("update_compound_response: {} {:?}", id, response);
+        let mut requests = self.request_map.write().unwrap();
+        if let Some(request) = requests.get_mut(&id) {
+            //if let Some(mut value) = result.remove(&id) {
+            //let x = result.entry(key)
+            //result[&id] = value.clone();
+            //result.insert(id, value.clone());
+            //request.responses.push(response);
+            println!(
+                "update_compound_response: {} {:?}",
+                id, request.compound_request_id
+            );
         }
     }
 
@@ -336,8 +367,10 @@ impl EndpointBrokerState {
                     rpc: rpc_request.clone(),
                     rule: rule.clone(),
                     subscription_processed: None,
+                    compound_request_id: 0, // XXX: <---
                 },
             );
+            println!("update_request: inserting {} {:?}", id, request_map.len());
         }
 
         if extn_message.is_some() {
@@ -406,9 +439,9 @@ impl EndpointBrokerState {
 
     fn handle_static_request(
         &self,
-        rpc_request: RpcRequest,
+        rpc_request: &RpcRequest,
         extn_message: Option<ExtnMessage>,
-        rule: Rule,
+        rule: &Rule,
         callback: BrokerCallback,
     ) {
         let (id, _updated_request) = self.update_request(&rpc_request, rule.clone(), extn_message);
@@ -419,6 +452,86 @@ impl EndpointBrokerState {
         data.id = Some(id);
         let output = BrokerOutput { data };
         tokio::spawn(async move { callback.sender.send(output).await });
+    }
+
+    fn handle_compound_request(
+        &self,
+        rpc_request: &RpcRequest,
+        extn_message: Option<ExtnMessage>,
+        compound_rule: &Rule,
+    ) {
+        let mut associated_ids: Vec<u64> = vec![];
+        println!("==> handle_compound_request: rpc_request={:?}", rpc_request);
+        println!(
+            "==> handle_compound_request: compound_rule={:?}",
+            compound_rule.requests
+        );
+
+        if let Some(requests) = compound_rule.clone().requests {
+            for request in &requests {
+                if request.len() == 3 {
+                    println!("\t{:?}", request[0]);
+
+                    let rule_trans = RuleTransform {
+                        request: Some(request[2].clone()),
+                        response: None,
+                        event: None,
+                        event_decorator_method: None,
+                    };
+                    let sub_rule = Rule {
+                        alias: request[1].clone(),
+                        transform: rule_trans,
+                        filter: None,
+                        endpoint: Some(request[0].clone()),
+                        requests: Some(requests.clone()), // XXX
+                    };
+
+                    println!("==> handle_compound_request: sub_rule={:?}", sub_rule);
+                    let (id, updated_request) =
+                        self.update_request(&rpc_request, sub_rule.clone(), extn_message.clone()); // XXX: &rule
+
+                    associated_ids.push(id);
+
+                    let _ = self.handle_broker_request(updated_request, &sub_rule);
+                    //if let Some(broker) = self.get_sender(&request[0]) {
+                    //let (_, updated_request) =
+                    //    self.update_request(&rpc_request, sub_rule, extn_message.clone());
+                    //println!("==> handle_compound_request {:?}", updated_request);
+                    //let callback_c = callback.clone();
+                    //tokio::spawn(async move {
+                    //    if let Err(e) = broker.send(updated_request.clone()).await {
+                    //        callback_c.send_error(updated_request, e).await
+                    //    }
+                    //});
+                    //}
+                } else {
+                    // error
+                }
+            }
+        }
+    }
+
+    fn handle_broker_request(
+        &self,
+        request: BrokerRequest,
+        //rpc_request: &RpcRequest,
+        //extn_message: Option<ExtnMessage>,
+        rule: &Rule,
+    ) -> bool {
+        let callback = self.callback.clone();
+        let endpoint = rule.clone().endpoint.unwrap_or("thunder".to_owned());
+        if let Some(broker) = self.get_sender(&endpoint) {
+            //let (_, updated_request) =
+            //    self.update_request(&rpc_request, rule.clone(), extn_message);
+            tokio::spawn(async move {
+                if let Err(e) = broker.send(request.clone()).await {
+                    callback.send_error(request, e).await
+                }
+            });
+            true
+        } else {
+            false
+        }
     }
 
     fn get_sender(&self, hash: &str) -> Option<BrokerSender> {
@@ -434,36 +547,28 @@ impl EndpointBrokerState {
     ) -> bool {
         let mut handled: bool = true;
         let callback = self.callback.clone();
-        let mut broker_sender = None;
-        let mut found_rule = None;
+
         if let Some(rule) = self.rule_engine.get_rule(&rpc_request) {
-            let _ = found_rule.insert(rule.clone());
-            if let Some(endpoint) = rule.endpoint {
-                if let Some(endpoint) = self.get_sender(&endpoint) {
-                    let _ = broker_sender.insert(endpoint);
-                }
-            } else if rule.alias != "static" {
-                if let Some(endpoint) = self.get_sender("thunder") {
-                    let _ = broker_sender.insert(endpoint);
-                }
-            }
-        }
-
-        if found_rule.is_some() {
-            let rule = found_rule.unwrap();
-
             if rule.alias == "static" {
-                self.handle_static_request(rpc_request, extn_message, rule, callback);
-            } else if broker_sender.is_some() {
-                let broker = broker_sender.unwrap();
-                let (_, updated_request) = self.update_request(&rpc_request, rule, extn_message);
-                tokio::spawn(async move {
-                    if let Err(e) = broker.send(updated_request.clone()).await {
-                        callback.send_error(updated_request, e).await
-                    }
-                });
+                self.handle_static_request(&rpc_request, extn_message.clone(), &rule, callback);
+            } else if rule.alias == "compound" {
+                self.handle_compound_request(&rpc_request, extn_message.clone(), &rule);
             } else {
-                handled = false;
+                let (_, updated_request) =
+                    self.update_request(&rpc_request, rule.clone(), extn_message);
+                handled = self.handle_broker_request(updated_request, &rule);
+                //let endpoint = rule.clone().endpoint.unwrap_or("thunder".to_owned());
+                //if let Some(broker) = self.get_sender(&endpoint) {
+                //    let (_, updated_request) =
+                //        self.update_request(&rpc_request, rule.clone(), extn_message);
+                //    tokio::spawn(async move {
+                //        if let Err(e) = broker.send(updated_request.clone()).await {
+                //            callback.send_error(updated_request, e).await
+                //        }
+                //    });
+                //} else {
+                //    handled = false;
+                //}
             }
         } else {
             handled = false;
@@ -485,13 +590,13 @@ impl EndpointBrokerState {
     }
 
     // Get Broker Request from rpc_request
-    pub fn get_broker_request(&self, rpc_request: &RpcRequest, rule: Rule) -> BrokerRequest {
-        BrokerRequest {
-            rpc: rpc_request.clone(),
-            rule,
-            subscription_processed: None,
-        }
-    }
+    //pub fn get_broker_request(&self, rpc_request: &RpcRequest, rule: Rule) -> BrokerRequest {
+    //    BrokerRequest {
+    //        rpc: rpc_request.clone(),
+    //        rule,
+    //        subscription_processed: None,
+    //    }
+    //}
 }
 
 /// Trait which contains all the abstract methods for a Endpoint Broker
@@ -603,6 +708,12 @@ impl BrokerOutputForwarder {
                         let session_id = rpc_request.ctx.get_id();
                         let is_subscription = rpc_request.is_subscription();
                         let mut apply_response_needed = false;
+                        let compound_request = broker_request.rule.requests.is_some();
+
+                        //if compound_request {
+                        println!("==> comp ={} req {:?}", compound_request, broker_request);
+                        println!("==> resp {:?}", response);
+                        //}
 
                         // Step 1: Create the data
                         if let Some(result) = response.result.clone() {
@@ -697,6 +808,13 @@ impl BrokerOutputForwarder {
                         let request_id = rpc_request.ctx.call_id;
                         response.id = Some(request_id);
 
+                        if compound_request {
+                            platform_state
+                                .endpoint_state
+                                .update_compound_response(id, response);
+                            continue;
+                        }
+
                         // Step 2: Create the message
                         let message = ApiMessage {
                             request_id: request_id.to_string(),
@@ -720,6 +838,8 @@ impl BrokerOutputForwarder {
                             .session_state
                             .get_session_for_connection_id(&session_id)
                         {
+                            println!("==> resp msg {:?}", message);
+
                             return_api_message_for_transport(
                                 session,
                                 message,
@@ -1165,3 +1285,19 @@ mod tests {
         assert_eq!(response.result.unwrap(), "GB");
     }
 }
+
+/*
+        "requests": [
+          [
+            "asHttp",
+            "/system/hdmi",
+            "null"
+          ],
+          [
+            "thunder",
+            "org.rdk.DisplaySettings.getCurrentResolutionXXX",
+            "null"
+          ]
+        ],
+
+*/

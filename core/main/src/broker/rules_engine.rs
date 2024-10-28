@@ -84,6 +84,14 @@ pub enum RuleEndpointProtocol {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct CompoundRuleXXX {
+    #[serde(default)]
+    pub endpoint: String,
+    pub alias: String,
+    #[serde(default)]
+    pub request_transform: Option<String>,
+}
+#[derive(Debug, Clone, Deserialize)]
 pub struct Rule {
     pub alias: String,
     // Not every rule needs transform
@@ -92,7 +100,7 @@ pub struct Rule {
     pub filter: Option<String>,
     pub endpoint: Option<String>,
     #[serde(default)]
-    pub requests: Option<Vec<Vec<String>>>,
+    pub requests: Option<Vec<Rule>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

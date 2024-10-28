@@ -37,6 +37,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
+    path::is_separator,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, RwLock,
@@ -85,7 +86,6 @@ pub struct BrokerRequest {
     pub rpc: RpcRequest,
     pub rule: Rule,
     pub subscription_processed: Option<bool>,
-    pub compound_request_id: u64,
 }
 
 pub type BrokerSubMap = HashMap<String, Vec<BrokerRequest>>;
@@ -142,7 +142,6 @@ impl BrokerRequest {
             rpc: rpc_request.clone(),
             rule,
             subscription_processed: None,
-            compound_request_id: 0,
         }
     }
 
@@ -232,19 +231,32 @@ impl BrokerSender {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompoundResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<Value>,
+    //#[serde(skip_serializing)]
+    //pub params: Option<Value>,
+}
+
 #[derive(Debug)]
 struct CompoundRequest {
-    request: BrokerRequest,
-    response: Option<JsonRpcApiResponse>,
+    request: RpcRequest,
+    response: Vec<CompoundResponse>,
+    //response_map: Arc<RwLock<HashMap<u64, CompoundResponse>>>,
     associated_ids: Vec<u64>,
+    compound_rule: Rule,
 }
+
 #[derive(Debug, Clone)]
 pub struct EndpointBrokerState {
     endpoint_map: Arc<RwLock<HashMap<String, BrokerSender>>>,
     callback: BrokerCallback,
     request_map: Arc<RwLock<HashMap<u64, BrokerRequest>>>,
     extension_request_map: Arc<RwLock<HashMap<u64, ExtnMessage>>>,
-    comp_response_map: Arc<RwLock<HashMap<u64, CompoundRequest>>>,
+    comp_request_map: Arc<RwLock<HashMap<u64, CompoundRequest>>>,
     rule_engine: RuleEngine,
     cleaner_list: Arc<RwLock<Vec<BrokerCleaner>>>,
     reconnect_tx: Sender<BrokerConnectRequest>,
@@ -262,7 +274,7 @@ impl EndpointBrokerState {
             callback: BrokerCallback { sender: tx },
             request_map: Arc::new(RwLock::new(HashMap::new())),
             extension_request_map: Arc::new(RwLock::new(HashMap::new())),
-            comp_response_map: Arc::new(RwLock::new(HashMap::new())),
+            comp_request_map: Arc::new(RwLock::new(HashMap::new())),
             rule_engine,
             cleaner_list: Arc::new(RwLock::new(Vec::new())),
             reconnect_tx,
@@ -298,10 +310,8 @@ impl EndpointBrokerState {
 
         let result = result.unwrap();
         if !result.rpc.is_subscription() {
-            println!("==> removing {:?}", id);
             let _ = self.request_map.write().unwrap().remove(&id);
         }
-        println!("==> {:?} len={:?}", id, result.compound_request_id);
         Ok(result)
     }
 
@@ -313,20 +323,85 @@ impl EndpointBrokerState {
         }
     }
 
-    fn update_compound_response(&self, id: u64, response: JsonRpcApiResponse) {
-        println!("update_compound_response: {} {:?}", id, response);
-        let mut requests = self.request_map.write().unwrap();
-        if let Some(request) = requests.get_mut(&id) {
-            //if let Some(mut value) = result.remove(&id) {
-            //let x = result.entry(key)
-            //result[&id] = value.clone();
-            //result.insert(id, value.clone());
-            //request.responses.push(response);
-            println!(
-                "update_compound_response: {} {:?}",
-                id, request.compound_request_id
-            );
+    fn handle_compound_response(
+        &self,
+        request: &BrokerRequest,
+        response: &JsonRpcApiResponse,
+    ) -> bool {
+        let mut done = false;
+        //println!("handle_compound_response: {:?} {:?}", request, response);
+        let id = request.rpc.ctx.call_id;
+        {
+            let mut crm = self.comp_request_map.write().unwrap();
+            if let Some(request) = crm.get_mut(&id) {
+                let cr = CompoundResponse {
+                    result: response.result.clone(),
+                    error: response.error.clone(),
+                };
+                println!("ucr: cr={:?} ", cr);
+
+                request.response.push(cr);
+                println!("ucr: {} rpc_req: {:?}", id, request.associated_ids);
+                done = request.associated_ids.len() == request.response.len();
+                println!(
+                    "ucr: reponse {} of {}",
+                    request.response.len(),
+                    request.associated_ids.len()
+                );
+            }
         }
+        if !done {
+            let mut request_map = self.request_map.read().unwrap();
+        }
+        done
+    }
+
+    fn generate_compound_response(
+        &self,
+        request: &BrokerRequest,
+        response: &mut JsonRpcApiResponse,
+    ) {
+        println!("===> generate_compound_response");
+        let mut compound_rule = String::default();
+        let id = request.rpc.ctx.call_id;
+        // XXX: can get the rule without storing
+        //if let Some(rule) = self.rule_engine.get_rule(&rpc_request) {
+        //}
+
+        let mut crm = self.comp_request_map.write().unwrap();
+        if let Some(cr) = crm.get_mut(&id) {
+            if let Some(rule) = &cr.compound_rule.transform.response {
+                compound_rule = rule.clone();
+            }
+
+            let mut rv = Vec::new();
+            let mut ev: Option<Value> = None;
+            for response in &cr.response {
+                if let Some(result) = response.result.clone() {
+                    rv.push(result);
+                } else if let Some(err) = response.error.clone() {
+                    ev = Some(err); // first error
+                                    //let error = json!({"code":666,"message":"Error in Compound Request"}); // or generic error
+                                    //err.push(error);
+                    break;
+                }
+            }
+
+            println!("=== generate_compound_response: rv={:?} ev={:?}", rv, ev);
+            if ev.is_some() {
+                response.error = ev;
+                response.result = None;
+            } else {
+                response.result = Some(serde_json::Value::Array(rv));
+                response.error = None;
+            }
+
+            // All done, remove entry from comp_request_map
+            crm.remove(&id);
+        }
+
+        apply_response(compound_rule, &request.rpc, response);
+        println!("<== generate_compound_response: after jq {:?}", response);
     }
 
     fn get_extn_message(&self, id: u64, is_event: bool) -> Result<ExtnMessage, RippleError> {
@@ -367,10 +442,9 @@ impl EndpointBrokerState {
                     rpc: rpc_request.clone(),
                     rule: rule.clone(),
                     subscription_processed: None,
-                    compound_request_id: 0, // XXX: <---
                 },
             );
-            println!("update_request: inserting {} {:?}", id, request_map.len());
+            //println!("update_request: inserting {} {:?}", id, request_map.len());
         }
 
         if extn_message.is_some() {
@@ -457,72 +531,64 @@ impl EndpointBrokerState {
     fn handle_compound_request(
         &self,
         rpc_request: &RpcRequest,
-        extn_message: Option<ExtnMessage>,
+        _extn_message: Option<ExtnMessage>,
         compound_rule: &Rule,
+        sync: bool,
     ) {
+        let mut first_req = true;
         let mut associated_ids: Vec<u64> = vec![];
-        println!("==> handle_compound_request: rpc_request={:?}", rpc_request);
-        println!(
-            "==> handle_compound_request: compound_rule={:?}",
-            compound_rule.requests
-        );
+        println!("==> hcr: rpc_request={:?}", rpc_request);
+        println!("=== hcr: compound_rule={:?}", compound_rule.requests);
 
         if let Some(requests) = compound_rule.clone().requests {
             for request in &requests {
-                if request.len() == 3 {
-                    println!("\t{:?}", request[0]);
+                println!("\t{:?}", request.endpoint);
+                let rule_trans = RuleTransform {
+                    request: request.transform.request.clone(),
+                    response: None,
+                    event: None,
+                    event_decorator_method: None,
+                };
+                let sub_rule = Rule {
+                    alias: request.alias.clone(),
+                    transform: rule_trans,
+                    filter: None,
+                    endpoint: request.endpoint.clone(),
+                    requests: Some(requests.clone()), // XXX: ???
+                };
 
-                    let rule_trans = RuleTransform {
-                        request: Some(request[2].clone()),
-                        response: None,
-                        event: None,
-                        event_decorator_method: None,
-                    };
-                    let sub_rule = Rule {
-                        alias: request[1].clone(),
-                        transform: rule_trans,
-                        filter: None,
-                        endpoint: Some(request[0].clone()),
-                        requests: Some(requests.clone()), // XXX
-                    };
+                println!("==> handle_compound_request: sub_rule={:?}", sub_rule);
+                let (id, updated_request) = self.update_request(
+                    &rpc_request,
+                    sub_rule.clone(),
+                    None, /*extn_message.clone()*/
+                );
 
-                    println!("==> handle_compound_request: sub_rule={:?}", sub_rule);
-                    let (id, updated_request) =
-                        self.update_request(&rpc_request, sub_rule.clone(), extn_message.clone()); // XXX: &rule
+                associated_ids.push(id);
 
-                    associated_ids.push(id);
-
+                // Send only the first request for sync, otherwise all
+                if (sync && first_req) || !sync {
+                    first_req = false;
                     let _ = self.handle_broker_request(updated_request, &sub_rule);
-                    //if let Some(broker) = self.get_sender(&request[0]) {
-                    //let (_, updated_request) =
-                    //    self.update_request(&rpc_request, sub_rule, extn_message.clone());
-                    //println!("==> handle_compound_request {:?}", updated_request);
-                    //let callback_c = callback.clone();
-                    //tokio::spawn(async move {
-                    //    if let Err(e) = broker.send(updated_request.clone()).await {
-                    //        callback_c.send_error(updated_request, e).await
-                    //    }
-                    //});
-                    //}
-                } else {
-                    // error
                 }
             }
+            let cr = CompoundRequest {
+                request: rpc_request.clone(),
+                response: Vec::new(),
+                associated_ids,
+                compound_rule: compound_rule.clone(),
+            };
+            let mut crm = self.comp_request_map.write().unwrap();
+            let id = rpc_request.ctx.call_id;
+            println!("inserting cr {id}");
+            crm.insert(id, cr);
         }
     }
 
-    fn handle_broker_request(
-        &self,
-        request: BrokerRequest,
-        //rpc_request: &RpcRequest,
-        //extn_message: Option<ExtnMessage>,
-        rule: &Rule,
-    ) -> bool {
+    fn handle_broker_request(&self, request: BrokerRequest, rule: &Rule) -> bool {
         let callback = self.callback.clone();
         let endpoint = rule.clone().endpoint.unwrap_or("thunder".to_owned());
         if let Some(broker) = self.get_sender(&endpoint) {
-            //let (_, updated_request) =
-            //    self.update_request(&rpc_request, rule.clone(), extn_message);
             tokio::spawn(async move {
                 if let Err(e) = broker.send(request.clone()).await {
                     callback.send_error(request, e).await
@@ -552,23 +618,13 @@ impl EndpointBrokerState {
             if rule.alias == "static" {
                 self.handle_static_request(&rpc_request, extn_message.clone(), &rule, callback);
             } else if rule.alias == "compound" {
-                self.handle_compound_request(&rpc_request, extn_message.clone(), &rule);
+                self.handle_compound_request(&rpc_request, extn_message.clone(), &rule, false);
+            } else if rule.alias == "compound_sync" {
+                self.handle_compound_request(&rpc_request, extn_message.clone(), &rule, true);
             } else {
                 let (_, updated_request) =
                     self.update_request(&rpc_request, rule.clone(), extn_message);
                 handled = self.handle_broker_request(updated_request, &rule);
-                //let endpoint = rule.clone().endpoint.unwrap_or("thunder".to_owned());
-                //if let Some(broker) = self.get_sender(&endpoint) {
-                //    let (_, updated_request) =
-                //        self.update_request(&rpc_request, rule.clone(), extn_message);
-                //    tokio::spawn(async move {
-                //        if let Err(e) = broker.send(updated_request.clone()).await {
-                //            callback.send_error(updated_request, e).await
-                //        }
-                //    });
-                //} else {
-                //    handled = false;
-                //}
             }
         } else {
             handled = false;
@@ -588,15 +644,6 @@ impl EndpointBrokerState {
             cleaner.cleanup_session(app_id).await
         }
     }
-
-    // Get Broker Request from rpc_request
-    //pub fn get_broker_request(&self, rpc_request: &RpcRequest, rule: Rule) -> BrokerRequest {
-    //    BrokerRequest {
-    //        rpc: rpc_request.clone(),
-    //        rule,
-    //        subscription_processed: None,
-    //    }
-    //}
 }
 
 /// Trait which contains all the abstract methods for a Endpoint Broker
@@ -710,10 +757,14 @@ impl BrokerOutputForwarder {
                         let mut apply_response_needed = false;
                         let compound_request = broker_request.rule.requests.is_some();
 
-                        //if compound_request {
-                        println!("==> comp ={} req {:?}", compound_request, broker_request);
-                        println!("==> resp {:?}", response);
-                        //}
+                        if compound_request {
+                            let done = platform_state
+                                .endpoint_state
+                                .handle_compound_response(&broker_request, &response);
+                            if !done {
+                                continue; // Not done, need more response(s) for the compound request
+                            }
+                        }
 
                         // Step 1: Create the data
                         if let Some(result) = response.result.clone() {
@@ -811,8 +862,7 @@ impl BrokerOutputForwarder {
                         if compound_request {
                             platform_state
                                 .endpoint_state
-                                .update_compound_response(id, response);
-                            continue;
+                                .generate_compound_response(&broker_request, &mut response);
                         }
 
                         // Step 2: Create the message
@@ -838,8 +888,6 @@ impl BrokerOutputForwarder {
                             .session_state
                             .get_session_for_connection_id(&session_id)
                         {
-                            println!("==> resp msg {:?}", message);
-
                             return_api_message_for_transport(
                                 session,
                                 message,
@@ -1285,19 +1333,3 @@ mod tests {
         assert_eq!(response.result.unwrap(), "GB");
     }
 }
-
-/*
-        "requests": [
-          [
-            "asHttp",
-            "/system/hdmi",
-            "null"
-          ],
-          [
-            "thunder",
-            "org.rdk.DisplaySettings.getCurrentResolutionXXX",
-            "null"
-          ]
-        ],
-
-*/

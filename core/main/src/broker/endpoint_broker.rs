@@ -38,6 +38,7 @@ use serde_json::{json, Value};
 use std::{
     collections::HashMap,
     path::is_separator,
+    result,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, RwLock,
@@ -244,8 +245,8 @@ pub struct CompoundResponse {
 #[derive(Debug)]
 struct CompoundRequest {
     request: RpcRequest,
-    response: Vec<CompoundResponse>,
-    //response_map: Arc<RwLock<HashMap<u64, CompoundResponse>>>,
+    //response: Vec<CompoundResponse>,
+    response_map: Arc<RwLock<HashMap<u64, CompoundResponse>>>,
     associated_ids: Vec<u64>,
     compound_rule: Rule,
 }
@@ -325,33 +326,64 @@ impl EndpointBrokerState {
 
     fn handle_compound_response(
         &self,
-        request: &BrokerRequest,
+        br_request: &BrokerRequest,
         response: &JsonRpcApiResponse,
     ) -> bool {
         let mut done = false;
+        let mut next_id: u64 = 0;
         //println!("handle_compound_response: {:?} {:?}", request, response);
-        let id = request.rpc.ctx.call_id;
+        let rpc_id = br_request.rpc.ctx.call_id;
+        let id = response.id.unwrap_or(0);
         {
             let mut crm = self.comp_request_map.write().unwrap();
-            if let Some(request) = crm.get_mut(&id) {
+            if let Some(request) = crm.get_mut(&rpc_id) {
                 let cr = CompoundResponse {
                     result: response.result.clone(),
                     error: response.error.clone(),
                 };
-                println!("ucr: cr={:?} ", cr);
+                println!("hcr: cr={:?} ", cr);
 
-                request.response.push(cr);
-                println!("ucr: {} rpc_req: {:?}", id, request.associated_ids);
-                done = request.associated_ids.len() == request.response.len();
+                let mut comp_resp_map = request.response_map.write().unwrap();
+                // if let Some(mut comp_resp) = comp_resp_map.get(&id) {
+                if comp_resp_map.get(&id).is_none() {
+                    println!("hcr: inserting resp.id={} ", id);
+                    let _ = comp_resp_map.insert(id, cr);
+                }
+
+                //request.response.push(cr);
+                println!("hcr: id={} ids: {:?}", id, request.associated_ids);
+                done = request.associated_ids.len() == comp_resp_map.len();
                 println!(
-                    "ucr: reponse {} of {}",
-                    request.response.len(),
+                    "hcr: reponse {} of {}",
+                    comp_resp_map.len(),
                     request.associated_ids.len()
                 );
+
+                if !done {
+                    for ids in &request.associated_ids {
+                        if let Some(cr) = comp_resp_map.get(&ids) {
+                            println!("hcr: id={} cr={:?}", ids, cr);
+                        } else {
+                            println!("hcr: id={} not found", *ids);
+                            next_id = *ids;
+                            break;
+                        }
+                    }
+                }
             }
         }
-        if !done {
-            let mut request_map = self.request_map.read().unwrap();
+
+        println!("hcr: done={} id={} next_id={}", done, id, next_id);
+        if next_id != 0 {
+            //let mut request_map = self.request_map.read().unwrap();
+            let result = { self.request_map.read().unwrap().get(&next_id).cloned() };
+            if let Some(mut br) = result {
+                println!("hcr: br={:?}", br);
+
+                let rule = br.rule.clone();
+                br.rpc.ctx.call_id = next_id;   // doing what update_request() does ?!?!?!
+                let _ = self.handle_broker_request(br, &rule);
+            }
         }
         done
     }
@@ -376,6 +408,22 @@ impl EndpointBrokerState {
 
             let mut rv = Vec::new();
             let mut ev: Option<Value> = None;
+
+            for next_id in &cr.associated_ids {
+                let comp_resp_map = { cr.response_map.read().unwrap().get(&next_id).cloned() };
+                if let Some(comp_resp) = comp_resp_map {
+                    if let Some(val) = comp_resp.result {
+                        rv.push(val);
+                    } else if let Some(err) = comp_resp.error {
+                        ev = Some(err); // first error
+                                        //let error = json!({"code":666,"message":"Error in Compound Request"}); // or generic error
+                                        //err.push(error);
+                        break;
+                    }
+                }
+            }
+
+            /*
             for response in &cr.response {
                 if let Some(result) = response.result.clone() {
                     rv.push(result);
@@ -386,6 +434,7 @@ impl EndpointBrokerState {
                     break;
                 }
             }
+            */
 
             println!("=== generate_compound_response: rv={:?} ev={:?}", rv, ev);
             if ev.is_some() {
@@ -574,13 +623,14 @@ impl EndpointBrokerState {
             }
             let cr = CompoundRequest {
                 request: rpc_request.clone(),
-                response: Vec::new(),
+                //response: Vec::new(),
+                response_map: Arc::new(RwLock::new(HashMap::new())),
                 associated_ids,
                 compound_rule: compound_rule.clone(),
             };
             let mut crm = self.comp_request_map.write().unwrap();
             let id = rpc_request.ctx.call_id;
-            println!("inserting cr {id}");
+            println!("inserting c.request {id}");
             crm.insert(id, cr);
         }
     }

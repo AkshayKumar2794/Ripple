@@ -54,7 +54,7 @@ impl From<CallContext> for AppIdentification {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Default)]
 pub struct CallContext {
     pub session_id: String,
     pub request_id: String,
@@ -64,6 +64,7 @@ pub struct CallContext {
     pub method: String,
     pub cid: Option<String>,
     pub gateway_secure: bool,
+    pub context: Vec<String>,
 }
 
 impl CallContext {
@@ -88,6 +89,7 @@ impl CallContext {
             method,
             cid,
             gateway_secure,
+            context: Vec::new(),
         }
     }
 
@@ -96,6 +98,10 @@ impl CallContext {
             return cid.clone();
         }
         self.session_id.clone()
+    }
+
+    pub fn is_event_based(&self) -> bool {
+        self.context.contains(&"eventBased".to_owned())
     }
 }
 
@@ -110,14 +116,16 @@ impl crate::Mockable for CallContext {
             method: "module.method".to_owned(),
             cid: Some("cid".to_owned()),
             gateway_secure: true,
+            context: Vec::new(),
         }
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
 pub enum ApiProtocol {
     Bridge,
     Extn,
+    #[default]
     JsonRpc,
 }
 
@@ -197,17 +205,72 @@ impl JsonRpcApiRequest {
     }
 }
 
+#[derive(Clone, Default, Debug)]
+pub struct JsonRpcApiError {
+    pub code: i32,
+    pub id: Option<u64>,
+    pub message: String,
+    pub method: Option<String>,
+    pub params: Option<Value>,
+}
+impl JsonRpcApiError {
+    pub fn new(
+        code: i32,
+        id: Option<u64>,
+        message: String,
+        method: Option<String>,
+        params: Option<Value>,
+    ) -> Self {
+        JsonRpcApiError {
+            code,
+            id,
+            message,
+            method,
+            params,
+        }
+    }
+    pub fn with_method(mut self, method: String) -> Self {
+        self.method = Some(method);
+        self
+    }
+    pub fn with_params(mut self, params: Option<Value>) -> Self {
+        self.params = params;
+        self
+    }
+    pub fn with_id(mut self, id: u64) -> Self {
+        self.id = Some(id);
+        self
+    }
+    pub fn with_message(mut self, message: String) -> Self {
+        self.message = message;
+        self
+    }
+    pub fn with_code(mut self, code: i32) -> Self {
+        self.code = code;
+        self
+    }
+    pub fn to_response(&self) -> JsonRpcApiResponse {
+        JsonRpcApiResponse::error(self)
+    }
+}
+impl From<JsonRpcApiError> for JsonRpcApiResponse {
+    fn from(error: JsonRpcApiError) -> Self {
+        JsonRpcApiResponse::error(&error)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonRpcApiResponse {
     pub jsonrpc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<Value>,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
 }
 
@@ -221,6 +284,78 @@ impl Default for JsonRpcApiResponse {
             method: None,
             params: None,
         }
+    }
+}
+
+impl JsonRpcApiResponse {
+    pub fn update_event_message(&mut self, request: &RpcRequest) {
+        if request.is_event_based() {
+            self.params = self.result.take();
+            self.id = None;
+            self.method = Some(format!("{}.{}", request.ctx.method, request.ctx.call_id))
+        } else {
+            self.method = None;
+            self.params = None;
+        }
+    }
+
+    pub fn error(error: &JsonRpcApiError) -> Self {
+        JsonRpcApiResponse {
+            jsonrpc: "2.0".to_owned(),
+            id: error.id,
+            result: None,
+            error: Some(json!({"code": error.code, "message": error.message})),
+            method: error.method.clone(),
+            params: error.params.clone(),
+        }
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        serde_json::to_string(self).unwrap().as_bytes().to_vec()
+    }
+    pub fn with_result(mut self, result: Option<Value>) -> Self {
+        self.result = result;
+        self.error = None;
+        self
+    }
+    pub fn with_method(mut self, method: Option<String>) -> Self {
+        self.method = method;
+        self
+    }
+    pub fn with_params(mut self, params: Option<Value>) -> Self {
+        self.params = params;
+        self
+    }
+    pub fn with_id(mut self, id: u64) -> Self {
+        self.id = Some(id);
+        self
+    }
+    pub fn with_error(mut self, error: Value) -> Self {
+        self.error = Some(error);
+        self.result = None;
+        self
+    }
+    pub fn is_error(&self) -> bool {
+        self.error.is_some()
+    }
+    pub fn is_success(&self) -> bool {
+        self.result.is_some()
+    }
+
+    pub fn is_response(&self) -> bool {
+        self.params.is_none()
+            && self.method.is_none()
+            && self.id.is_some()
+            && (self.result.is_some() || self.error.is_some())
+    }
+
+    pub fn get_response(request: &str) -> Option<JsonRpcApiResponse> {
+        if let Ok(response) = serde_json::from_str::<JsonRpcApiResponse>(request) {
+            if response.is_response() {
+                return Some(response);
+            }
+        }
+        None
     }
 }
 
@@ -281,7 +416,7 @@ impl RpcStats {
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Default)]
 pub struct RpcRequest {
     pub method: String,
     pub params_json: String,
@@ -362,6 +497,7 @@ impl RpcRequest {
         request_id: String,
         cid: Option<String>,
         gateway_secure: bool,
+        context: Vec<String>,
     ) -> Result<RpcRequest, RequestParseError> {
         let parsed =
             serde_json::from_str::<serde_json::Value>(&json).map_err(|_| RequestParseError {})?;
@@ -375,7 +511,7 @@ impl RpcRequest {
 
         let id = jsonrpc_req.id.unwrap_or(0);
         let method = FireboltOpenRpcMethod::name_with_lowercase_module(&jsonrpc_req.method);
-        let ctx = CallContext::new(
+        let mut ctx = CallContext::new(
             session_id,
             request_id,
             app_id,
@@ -385,6 +521,7 @@ impl RpcRequest {
             cid,
             gateway_secure,
         );
+        ctx.context = context;
         let ps = RpcRequest::prepend_ctx(jsonrpc_req.params, &ctx);
         Ok(RpcRequest::new(method, ps, ctx))
     }
@@ -438,6 +575,14 @@ impl RpcRequest {
             stats: RpcStats::default(),
         }
     }
+
+    pub fn is_event_based(&self) -> bool {
+        self.ctx.is_event_based()
+    }
+
+    pub fn add_context(&mut self, context: Vec<String>) {
+        self.ctx.context.extend(context)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -486,6 +631,7 @@ mod tests {
             method: "method123".to_string(),
             cid: Some("cid123".to_string()),
             gateway_secure: true,
+            context: Vec::new(),
         };
 
         let caller_session: CallerSession = ctx.into();
@@ -505,6 +651,7 @@ mod tests {
             method: "method123".to_string(),
             cid: Some("cid123".to_string()),
             gateway_secure: true,
+            context: Vec::new(),
         };
 
         let app_identification: AppIdentification = ctx.into();
@@ -707,6 +854,7 @@ mod tests {
             method: "some_method".to_string(),
             cid: Some("some_cid".to_string()),
             gateway_secure: true,
+            context: Vec::new(),
         };
 
         let rpc_request = RpcRequest {

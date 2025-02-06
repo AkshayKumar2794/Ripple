@@ -20,6 +20,7 @@ There are 3 Manifest files which are necessary for Ripple 2.0.
 3. `App Library`: Contains the App catalogue denoting the App Launch Url and configurations required by Ripple for launching and management. An example can be found in `examples/manifest/app-library-example.json`.
 
 
+
 ### Pre-requisites for running with VSCode
 1. Install [Rust](https://www.rust-lang.org/tools/install)
 2. Install [VSCode](https://code.visualstudio.com/)

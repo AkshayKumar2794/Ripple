@@ -58,7 +58,7 @@ pub fn init_logger(name: String) -> Result<(), fern::InitError> {
 }
 
 pub fn init_and_configure_logger(version: &str, name: String) -> Result<(), fern::InitError> {
-    let log_string: String = std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".into());
+    let log_string: String = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
     println!("log level {}", log_string);
     let _version_string = version.to_string();
     let filter = log::LevelFilter::from_str(&log_string).unwrap_or(log::LevelFilter::Info);
@@ -109,6 +109,7 @@ pub fn init_and_configure_logger(version: &str, name: String) -> Result<(), fern
             }
         })
         .level(filter)
+        .level_for("ripple_sdk::api::observability::log_signal", log::LevelFilter::Info)
         //log filter applied here, making the log level to OFF for the below mentioned crates
         .level_for("h2", log::LevelFilter::Off)
         .level_for("hyper", log::LevelFilter::Off)

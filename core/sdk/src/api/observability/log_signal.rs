@@ -186,11 +186,22 @@ impl<T: std::fmt::Display + ContextAsJson> LogSignal<T> {
             context,
         }
     }
+
     pub fn emit_debug(&self) {
-        log::debug!("{}", serde_json::Value::from(self));
+        println!("log_signal inside debug");
+        log::debug!( target: "ripple_sdk::api::observability::log_signal","{}", serde_json::Value::from(self));
+    }
+    pub fn emit_info(&self) {
+        println!("log_signal inside info");
+        log::info!(target: "ripple_sdk::api::observability::log_signal","{}", serde_json::Value::from(self));
     }
     pub fn emit_error(&self) {
-        log::error!("{}", serde_json::Value::from(self));
+        println!("log_signal inside error");
+        log::error!(target: "ripple_sdk::api::observability::log_signal","{}", serde_json::Value::from(self));
+    }
+    pub fn emit_warn(&self) {
+        println!("log_signal inside warn");
+        log::warn!(target: "ripple_sdk::api::observability::log_signal","{}", serde_json::Value::from(self));
     }
 
     pub fn with_diagnostic_context(mut self, diagnostic_context: HashMap<String, String>) -> Self {

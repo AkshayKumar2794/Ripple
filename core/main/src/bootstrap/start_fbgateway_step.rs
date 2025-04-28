@@ -43,10 +43,12 @@ use crate::{
 use jsonrpsee::core::{async_trait, server::rpc_module::Methods};
 use ripple_sdk::log::{debug, info};
 use ripple_sdk::{framework::bootstrap::Bootstep, utils::error::RippleError};
+use serde::de;
 pub struct FireboltGatewayStep;
 
 impl FireboltGatewayStep {
     async fn init_handlers(&self, state: PlatformState, extn_methods: Methods) -> Methods {
+        debug!("**** Initializing handlers");
         let mut methods = Methods::new();
 
         // TODO: Ultimately this may be able to register all providers below, for now just does
@@ -93,13 +95,16 @@ impl Bootstep<BootstrapState> for FireboltGatewayStep {
     }
 
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** Starting FireboltGatewayStep");
         let methods = self
             .init_handlers(
                 state.platform_state.clone(),
                 state.extn_state.get_extn_methods(),
             )
             .await;
+        debug!("**** Handlers initialized");
         let gateway = FireboltGateway::new(state.clone(), methods);
+        debug!("**** Gateway initialized");
         debug!("Handlers initialized");
         #[cfg(feature = "sysd")]
         if sd_notify::booted().is_ok()
@@ -109,9 +114,10 @@ impl Bootstep<BootstrapState> for FireboltGatewayStep {
         }
         TelemetryBuilder::send_ripple_telemetry(&state.platform_state);
         info!(
-            "Ripple Total Bootstrap time: {}",
+            "**** Ripple Total Bootstrap time: {}",
             Instant::now().duration_since(state.start_time).as_millis()
         );
+        debug!("**** Starting FireboltGateway");
         gateway.start().await;
 
         Err(RippleError::ServiceError)

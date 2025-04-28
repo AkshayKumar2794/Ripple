@@ -169,6 +169,7 @@ macro_rules! export_extn_metadata {
 /// # Safety
 /// TODO: Why is this unsafe allowed here? https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 pub unsafe fn load_extn_library_metadata(lib: &Library) -> Option<Box<ExtnMetadata>> {
+    debug!("**** ffi_library: load_extn_library_metadata: Loading symbol methods from library");
     type LibraryFfi = unsafe fn() -> *mut CExtnMetadata;
     let r = lib.get(b"extn_library_create_metadata");
     match r {

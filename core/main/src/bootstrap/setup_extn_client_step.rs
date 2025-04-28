@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use ripple_sdk::log::debug;
 use ripple_sdk::{
     async_trait::async_trait, framework::bootstrap::Bootstep, utils::error::RippleError,
 };
@@ -45,7 +46,11 @@ impl Bootstep<BootstrapState> for SetupExtnClientStep {
         "SetupExtnClientStep".into()
     }
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** SetupExtnClientStep: setup");
+        debug!("**** SetupExtnClientStep: setup - starting extn client");
         let client = state.platform_state.get_client();
+        debug!("**** SetupExtnClientStep: setup - got client");
+        debug!("**** SetupExtnClientStep: setup - initializing extn client");
         client.init().await;
         // Main is now ready to take in config requests from extensions
         client.add_request_processor(ConfigRequestProcessor::new(state.platform_state.clone()));
@@ -61,6 +66,7 @@ impl Bootstep<BootstrapState> for SetupExtnClientStep {
         client.add_request_processor(AuthorizedInfoProcessor::new(state.platform_state.clone()));
         client.add_request_processor(SettingsProcessor::new(state.platform_state.clone()));
         client.add_request_processor(OpMetricsProcessor::new(state.platform_state.clone()));
+        debug!("**** SetupExtnClientStep: setup - extn client initialized");
         Ok(())
     }
 }

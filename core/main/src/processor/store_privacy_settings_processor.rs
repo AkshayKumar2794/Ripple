@@ -48,6 +48,7 @@ pub struct StorePrivacySettingsProcessor {
 
 impl StorePrivacySettingsProcessor {
     pub fn new(state: PlatformState) -> StorePrivacySettingsProcessor {
+        debug!("**** StorePrivacySettingsProcessor: new");
         StorePrivacySettingsProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

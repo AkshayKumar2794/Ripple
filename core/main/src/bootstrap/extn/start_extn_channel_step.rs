@@ -19,7 +19,7 @@ use ripple_sdk::{
     api::status_update::ExtnStatus,
     async_trait::async_trait,
     framework::{bootstrap::Bootstep, RippleResponse},
-    log::{error, warn},
+    log::{debug, error, warn},
     tokio::sync::mpsc,
     utils::error::RippleError,
 };
@@ -30,6 +30,10 @@ fn start_preloaded_channel(
     state: &BootstrapState,
     channel: PreLoadedExtnChannel,
 ) -> RippleResponse {
+    debug!(
+        "**** StartExtnChannelsStep -  start_preloaded_channel: start extn channel step for extn_id: {}",
+        channel.extn_id
+    );
     let client = state.platform_state.get_client();
 
     if let Err(e) = state.extn_state.clone().start_channel(channel, client) {
@@ -51,6 +55,7 @@ impl Bootstep<BootstrapState> for StartExtnChannelsStep {
         "StartExtnChannelsStep".into()
     }
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** StartExtnChannelsStep -  setup");
         let mut extn_ids = Vec::new();
         {
             let mut device_channels = state.extn_state.device_channels.write().unwrap();
@@ -76,6 +81,10 @@ impl Bootstep<BootstrapState> for StartExtnChannelsStep {
             }
         }
         for extn_id in extn_ids {
+            debug!(
+                "**** StartExtnChannelsStep -  start extn channel step for extn_id: {}",
+                extn_id
+            );
             let (tx, mut tr) = mpsc::channel(1);
             if !state
                 .extn_state

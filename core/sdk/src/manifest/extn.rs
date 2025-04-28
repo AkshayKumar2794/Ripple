@@ -15,6 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use log::debug;
+
 use crate::{api::manifest::extn_manifest::ExtnManifest, log::info, utils::error::RippleError};
 
 pub struct LoadExtnManifestStep;
@@ -46,6 +48,7 @@ fn try_manifest_files() -> Result<ExtnManifest, RippleError> {
 }
 
 fn load_from_env() -> Result<(String, ExtnManifest), RippleError> {
+    debug!("**** extn: load_from_env");
     let device_manifest_path = std::env::var("EXTN_MANIFEST");
     match device_manifest_path {
         Ok(path) => ExtnManifest::load(path),
@@ -54,6 +57,7 @@ fn load_from_env() -> Result<(String, ExtnManifest), RippleError> {
 }
 
 fn load_from_home() -> Result<(String, ExtnManifest), RippleError> {
+    debug!("**** extn: load_from_home");
     match std::env::var("HOME") {
         Ok(home) => ExtnManifest::load(format!("{}/.ripple/firebolt-extn-manifest.json", home)),
         Err(_) => Err(RippleError::MissingInput),
@@ -61,5 +65,6 @@ fn load_from_home() -> Result<(String, ExtnManifest), RippleError> {
 }
 
 fn load_from_etc() -> Result<(String, ExtnManifest), RippleError> {
+    debug!("**** extn: load_from_etc");
     ExtnManifest::load("/etc/firebolt-extn-manifest.json".into())
 }

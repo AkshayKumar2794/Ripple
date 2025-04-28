@@ -98,6 +98,7 @@ pub enum FireboltGatewayCommand {
 
 impl FireboltGateway {
     pub fn new(state: BootstrapState, methods: Methods) -> FireboltGateway {
+        debug!("**** firebolt_gateway: new");
         for method in methods.method_names() {
             info!("Adding RPC method {}", method);
         }
@@ -106,6 +107,7 @@ impl FireboltGateway {
     }
 
     pub async fn start(&self) {
+        debug!("**** firebolt_gateway: start");
         trace!("Starting Gateway Listener");
         let mut firebolt_gateway_rx = self
             .state
@@ -168,6 +170,7 @@ impl FireboltGateway {
         platform_state: PlatformState,
         rpc_request: RpcRequest,
     ) -> Sender<BrokerOutput> {
+        debug!("**** firebolt_gateway: handle_broker_callback");
         const REQUESTOR_CALLBACK_TIMEOUT_SECS: u64 = 10;
 
         let (requestor_callback_tx, mut requestor_callback_rx) =
@@ -228,6 +231,7 @@ impl FireboltGateway {
     }
 
     pub fn handle_response(&self, response: JsonRpcApiResponse) {
+        debug!("**** firebolt_gateway: handle_response");
         self.state
             .platform_state
             .endpoint_state
@@ -235,6 +239,7 @@ impl FireboltGateway {
     }
 
     pub async fn handle(&self, request: RpcRequest, mut extn_msg: Option<ExtnMessage>) {
+        debug!("**** firebolt_gateway: handle");
         trace!(
             "firebolt_gateway Received Firebolt request {} {} {}",
             request.ctx.request_id,
@@ -456,6 +461,7 @@ fn validate_request(
     request: &RpcRequest,
     fail_open: bool,
 ) -> Result<(), String> {
+    debug!("**** firebolt_gateway: validate_request");
     // Existing fail open configuration should work where the
     // call should be delegated to the actual handler
     if fail_open {
@@ -532,6 +538,7 @@ async fn send_json_rpc_error(
     request: &RpcRequest,
     json_rpc_error: JsonRpcError,
 ) {
+    debug!("**** firebolt_gateway: send_json_rpc_error");
     if let Some(session) = platform_state
         .clone()
         .session_state

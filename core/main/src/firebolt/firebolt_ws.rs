@@ -85,6 +85,7 @@ fn get_query(
     key: &'static str,
     required: bool,
 ) -> Result<Option<String>, tungstenite::handshake::server::ErrorResponse> {
+    debug!("**** firebolt_ws: get_query");
     let found_q = match req.uri().query() {
         Some(qs) => {
             let qs = querystring::querify(qs);
@@ -114,6 +115,7 @@ impl tungstenite::handshake::server::Callback for ConnectionCallback {
         tungstenite::handshake::server::Response,
         tungstenite::handshake::server::ErrorResponse,
     > {
+        debug!("**** firebolt_ws: on_request");
         info!("New firebolt connection {:?}", request.uri().query());
         let cfg = self.0;
         let app_id_opt = match cfg.secure {
@@ -185,6 +187,7 @@ impl FireboltWs {
         secure: bool,
         internal_app_id: Option<String>,
     ) {
+        debug!("**** firebolt_ws: start");
         // Create the event loop and TCP listener we'll accept connections on.
         let try_socket = TcpListener::bind(&server_addr).await; //create the server on the address
         let listener = try_socket.unwrap_or_else(|_| panic!("Failed to bind {:?}", server_addr));
@@ -229,6 +232,7 @@ impl FireboltWs {
         state: PlatformState,
         gateway_secure: bool,
     ) {
+        debug!("**** firebolt_ws: handle_connection");
         let identity = connect_rx.await.unwrap();
         let client = state.get_client();
         let app_id = identity.app_id.clone();

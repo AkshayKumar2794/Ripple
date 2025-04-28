@@ -24,6 +24,7 @@ use ripple_sdk::{
         },
         extn_client_message::{ExtnMessage, ExtnResponse},
     },
+    log::debug,
     tokio::sync::mpsc::Sender,
 };
 
@@ -38,6 +39,7 @@ pub struct AuthorizedInfoProcessor {
 
 impl AuthorizedInfoProcessor {
     pub fn new(state: PlatformState) -> AuthorizedInfoProcessor {
+        debug!("**** AuthorizedInfoProcessor: new");
         AuthorizedInfoProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

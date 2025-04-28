@@ -28,6 +28,7 @@ use ripple_sdk::{
         },
         extn_client_message::{ExtnMessage, ExtnResponse},
     },
+    log::debug,
     tokio::sync::{
         mpsc::{Receiver as MReceiver, Sender as MSender},
         oneshot,
@@ -49,6 +50,7 @@ pub struct PinProcessor {
 
 impl PinProcessor {
     pub fn new(state: PlatformState) -> PinProcessor {
+        debug!("**** PinProcessor: new");
         PinProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

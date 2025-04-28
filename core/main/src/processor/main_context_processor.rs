@@ -56,6 +56,7 @@ pub struct MainContextProcessor {
 /// Bootstrap uses the [WaitForStatusReadyEventProcessor] to await during Device Connnection before starting the gateway.
 impl MainContextProcessor {
     pub fn new(state: PlatformState) -> MainContextProcessor {
+        debug!("**** MainContextProcessor: new");
         MainContextProcessor {
             state: ContextState {
                 current_context: Arc::new(RwLock::new(RippleContext::default())),

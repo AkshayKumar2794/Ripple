@@ -34,7 +34,7 @@ use ripple_sdk::{
         ffi::ffi_message::CExtnMessage,
     },
     framework::RippleResponse,
-    log::error,
+    log::{debug, error},
     tokio::{
         self,
         sync::{mpsc::Sender, oneshot},
@@ -72,6 +72,7 @@ pub struct RippleClient {
 
 impl RippleClient {
     pub fn new(state: ChannelsState) -> RippleClient {
+        debug!("**** ripple_client: new");
         let capability = ExtnId::get_main_target("main".into());
         let extn_sender = ExtnSender::new(
             state.get_extn_sender(),
@@ -101,6 +102,7 @@ impl RippleClient {
     }
 
     pub fn send_gateway_command(&self, cmd: FireboltGatewayCommand) -> Result<(), RippleError> {
+        debug!("**** ripple_client: send_gateway_command");
         if let Err(e) = self.gateway_sender.try_send(cmd) {
             error!("failed to send firebolt gateway message {:?}", e);
             return Err(RippleError::SendFailure);
@@ -109,6 +111,7 @@ impl RippleClient {
     }
 
     pub fn send_app_request(&self, request: AppRequest) -> Result<(), RippleError> {
+        debug!("**** ripple_client: send_app_request");
         if let Err(e) = self.app_mgr_sender.try_send(request) {
             error!("failed to send firebolt app message {:?}", e);
             return Err(RippleError::SendFailure);
@@ -117,6 +120,7 @@ impl RippleClient {
     }
 
     pub async fn get_app_state(&self, app_id: &str) -> Result<String, RippleError> {
+        debug!("**** ripple_client: get_app_state");
         let (app_resp_tx, app_resp_rx) = oneshot::channel::<Result<AppManagerResponse, AppError>>();
         let app_request = AppRequest::new(AppMethod::State(app_id.to_owned()), app_resp_tx);
         if let Err(e) = self.send_app_request(app_request) {
@@ -132,10 +136,12 @@ impl RippleClient {
     }
 
     pub fn get_extn_client(&self) -> ExtnClient {
+        debug!("**** ripple_client: get_extn_client");
         self.client.read().unwrap().clone()
     }
 
     pub async fn init(&self) {
+        debug!("**** ripple_client: init");
         let client = self.get_extn_client();
         tokio::spawn(async move { client.initialize().await });
     }
@@ -144,31 +150,41 @@ impl RippleClient {
         &self,
         payload: impl ExtnPayloadProvider,
     ) -> Result<ExtnMessage, RippleError> {
+        debug!("**** ripple_client: send_extn_request");
         self.get_extn_client().clone().request(payload).await
     }
     pub fn send_extn_request_transient(&self, payload: impl ExtnPayloadProvider) -> RippleResponse {
+        debug!("**** ripple_client: send_extn_request_transient");
         self.get_extn_client().request_transient(payload)?;
         Ok(())
     }
 
     pub async fn respond(&self, msg: ExtnMessage) -> Result<(), RippleError> {
+        debug!("**** ripple_client: respond");
         self.get_extn_client().clone().send_message(msg).await
     }
 
     pub fn add_request_processor(&self, stream_processor: impl ExtnRequestProcessor) {
+        debug!("**** ripple_client: add_request_processor");
         self.get_extn_client()
             .add_request_processor(stream_processor)
     }
 
     pub fn add_event_processor(&self, stream_processor: impl ExtnEventProcessor) {
+        debug!("**** ripple_client: add_event_processor");
         self.get_extn_client().add_event_processor(stream_processor)
     }
 
     pub fn add_extn_sender(&self, id: ExtnId, symbol: ExtnSymbol, sender: CSender<CExtnMessage>) {
+        debug!("**** ripple_client: add_extn_sender: id: {}", id);
         self.get_extn_client().add_sender(id, symbol, sender);
     }
 
     pub fn cleanup_event_processor(&self, capability: ExtnId) {
+        debug!(
+            "**** ripple_client: add_extn_sender: capability: {}",
+            capability
+        );
         self.get_extn_client().cleanup_event_stream(capability);
     }
 
@@ -177,6 +193,7 @@ impl RippleClient {
     }
 
     pub fn get_broker_sender(&self) -> Sender<BrokerOutput> {
+        debug!("**** ripple_client: get_broker_sender");
         self.broker_sender.clone()
     }
 }

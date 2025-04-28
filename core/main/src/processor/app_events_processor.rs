@@ -24,6 +24,7 @@ use ripple_sdk::{
         },
         extn_client_message::ExtnMessage,
     },
+    log::debug,
     tokio::sync::mpsc::Sender,
 };
 
@@ -38,6 +39,7 @@ pub struct AppEventsProcessor {
 
 impl AppEventsProcessor {
     pub fn new(state: PlatformState) -> AppEventsProcessor {
+        debug!("**** AppEventsProcessor: new");
         AppEventsProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

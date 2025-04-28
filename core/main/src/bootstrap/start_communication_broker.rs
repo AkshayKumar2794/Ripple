@@ -15,9 +15,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use ripple_sdk::log::debug;
 use ripple_sdk::{
     async_trait::async_trait, framework::bootstrap::Bootstep, utils::error::RippleError,
 };
+use serde::de;
 
 use crate::broker::endpoint_broker::BrokerOutputForwarder;
 use crate::processor::rpc_gateway_processor::RpcGatewayProcessor;
@@ -32,6 +34,7 @@ impl Bootstep<BootstrapState> for StartCommunicationBroker {
     }
 
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** in StartCommunicationBroker setup");
         let ps = state.platform_state.clone();
         // When endpoint broker starts up enable RPC processor there might be internal services which might need
         // brokering data
@@ -42,6 +45,7 @@ impl Bootstep<BootstrapState> for StartCommunicationBroker {
 
         // Start the Broker Reciever
         if let Ok(rx) = state.channels_state.get_broker_receiver() {
+            debug!("**** in StartCommunicationBroker setup - starting broker output forwarder");
             BrokerOutputForwarder::start_forwarder(ps.clone(), rx)
         }
         // Setup the endpoints from the manifests
@@ -60,13 +64,16 @@ impl Bootstep<BootstrapState> for StartOtherBrokers {
     }
 
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** in StartOtherBrokers setup");
         let ps = state.platform_state.clone();
         // Start the Broker Reciever
         if let Ok(rx) = state.channels_state.get_broker_receiver() {
+            debug!("**** in StartOtherBrokers setup - starting broker output forwarder");
             BrokerOutputForwarder::start_forwarder(ps.clone(), rx)
         }
         // Setup the endpoints from the manifests
         let mut endpoint_state = ps.clone().endpoint_state;
+        debug!("**** in StartOtherBrokers setup - building thunder endpoint");
         endpoint_state.build_other_endpoints(ps.clone(), ps.session_state.get_account_session());
         Ok(())
     }

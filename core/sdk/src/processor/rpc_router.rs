@@ -32,6 +32,7 @@ use jsonrpsee::{
     },
     types::{error::ErrorCode, Id, Params},
 };
+use log::debug;
 use std::sync::{Arc, RwLock};
 
 pub struct RpcRouter;
@@ -44,6 +45,7 @@ pub struct RouterState {
 
 impl RouterState {
     pub fn new() -> RouterState {
+        debug!("**** RPC_Router: new: Creating Router State");
         RouterState {
             methods: Arc::new(RwLock::new(Methods::new())),
             resources: Resources::default(),
@@ -51,6 +53,7 @@ impl RouterState {
     }
 
     pub fn update_methods(&self, methods: Methods) {
+        debug!("**** RPC_Router: update_methods: Updating Router State");
         let mut methods_state = self.methods.write().unwrap();
         if let Err(e) = methods_state.merge(methods.initialize_resources(&self.resources).unwrap())
         {
@@ -59,6 +62,7 @@ impl RouterState {
     }
 
     fn get_methods(&self) -> Methods {
+        debug!("**** RPC_Router: get_methods: Getting Router State");
         self.methods.read().unwrap().clone()
     }
 }
@@ -74,6 +78,7 @@ impl RpcRouter {
         req: RpcRequest,
         router_state: &RouterState,
     ) -> Result<String, RippleError> {
+        debug!("**** RPC_Router: Resolving route for {:?}", req);
         trace!("SDK: Resolving route for {:?}", req);
         let id = Id::Number(req.ctx.call_id);
         let methods = router_state.get_methods();

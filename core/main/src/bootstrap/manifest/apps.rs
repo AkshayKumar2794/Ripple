@@ -19,14 +19,16 @@ use std::{fs, path::Path};
 
 use ripple_sdk::{
     api::manifest::{app_library::DefaultLibrary, device_manifest::AppLibraryEntry},
-    log::{info, warn},
+    log::{debug, info, warn},
     serde_json,
     utils::error::RippleError,
 };
+use serde::de;
 pub struct LoadAppLibraryStep;
 
 impl LoadAppLibraryStep {
     pub fn load_app_library() -> Vec<AppLibraryEntry> {
+        debug!("**** apps.rs - LoadAppLibraryStep::load_app_library");
         let r = try_app_library_files();
         if let Ok(r) = r {
             return r;
@@ -39,6 +41,7 @@ impl LoadAppLibraryStep {
 type AppLibraryLoader = Vec<fn() -> Result<(String, Vec<AppLibraryEntry>), RippleError>>;
 
 fn try_app_library_files() -> Result<Vec<AppLibraryEntry>, RippleError> {
+    debug!("**** apps.rs - try_app_library_files");
     let al_arr: AppLibraryLoader = if cfg!(feature = "local_dev") {
         vec![load_from_env, load_from_home]
     } else if cfg!(test) {
@@ -58,6 +61,7 @@ fn try_app_library_files() -> Result<Vec<AppLibraryEntry>, RippleError> {
 }
 
 fn load_from_env() -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
+    debug!("**** apps.rs - load_from_env");
     match std::env::var("APP_LIBRARY") {
         Ok(path) => load(path),
         Err(_) => Err(RippleError::MissingInput),
@@ -65,6 +69,7 @@ fn load_from_env() -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
 }
 
 fn load_from_home() -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
+    debug!("**** apps.rs - load_from_home");
     match std::env::var("HOME") {
         Ok(home) => load(format!("{}/.ripple/firebolt-app-library.json", home)),
         Err(_) => Err(RippleError::MissingInput),
@@ -72,11 +77,13 @@ fn load_from_home() -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
 }
 
 fn load_from_etc() -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
+    debug!("**** apps.rs - load_from_etc");
     load("/etc/firebolt-app-library.json".into())
 }
 
 fn load(path: String) -> Result<(String, Vec<AppLibraryEntry>), RippleError> {
-    info!("Trying to load app library from {}", path);
+    debug!("**** apps.rs - load");
+    info!("**** Trying to load app library from {}", path);
     let p = Path::new(&path);
     if let Some(p_str) = p.to_str() {
         match fs::read_to_string(p_str) {

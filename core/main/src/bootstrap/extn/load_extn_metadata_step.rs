@@ -38,6 +38,7 @@ impl LoadExtensionMetadataStep {
         filename: P,
         entry: ExtnManifestEntry,
     ) -> Option<LoadedLibrary> {
+        debug!("**** in load_extension_library");
         match Library::new(&filename) {
             Ok(library) => load_extn_library_metadata(&library)
                 .map(|metadata| LoadedLibrary::new(library, metadata, entry)),
@@ -56,6 +57,7 @@ impl Bootstep<BootstrapState> for LoadExtensionMetadataStep {
     }
 
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** LoadExtensionMetadataStep -  setup");
         debug!("Starting Extension Library step");
         let manifest = state.platform_state.get_manifest();
         let default_path = manifest.default_path;

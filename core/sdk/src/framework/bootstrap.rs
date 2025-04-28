@@ -18,7 +18,7 @@
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use log::info;
+use log::{debug, info};
 use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::utils::error::RippleError;
@@ -35,6 +35,7 @@ impl<S: Clone> Bootstrap<S> {
     }
 
     pub async fn step(&self, s: impl Bootstep<S>) -> Result<&Self, RippleError> {
+        debug!("**** bootstrap: step");
         info!(">>>Starting Bootstep {}<<<", s.get_name());
         s.setup(self.state.clone()).await?;
 
@@ -72,6 +73,7 @@ pub struct TransientChannel<T> {
 
 impl<T> TransientChannel<T> {
     pub fn new(tx: Sender<T>, tr: Receiver<T>) -> TransientChannel<T> {
+        debug!("**** bootsrap: TransientChannel::new");
         Self {
             tx,
             tr: Arc::new(RwLock::new(Some(tr))),

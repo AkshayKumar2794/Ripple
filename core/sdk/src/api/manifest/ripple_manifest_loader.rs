@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-use log::{error, info};
+use log::{debug, error, info};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -70,6 +70,7 @@ pub struct RippleManifestLoader {
 
 impl RippleManifestLoader {
     pub fn initialize() -> Result<(ExtnManifest, DeviceManifest), RippleError> {
+        debug!("**** bootstep calling => api::manifest::ripple_manifest_loader::RippleManifestLoader::initialize");
         let cascaded_config = std::env::var("RIPPLE_CASCADED_CONFIGURATION")
             .ok()
             .and_then(|s| s.parse::<bool>().ok())
@@ -495,7 +496,7 @@ mod tests {
         let config_loader = loader.get_config_loader();
 
         let base_path = config_path_buf.parent().unwrap().display().to_string();
-        println!("basepath - {:?}", base_path);
+        debug!("basepath - {:?}", base_path);
 
         let (default_device_path, device_paths) = config_loader.get_manifest_paths(false);
 

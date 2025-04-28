@@ -34,7 +34,7 @@ use ripple_sdk::{
         ffi::{ffi_channel::ExtnChannel, ffi_library::ExtnMetadata, ffi_message::CExtnMessage},
     },
     libloading::Library,
-    log::info,
+    log::{debug, info},
     tokio::sync::mpsc,
     utils::error::RippleError,
 };
@@ -190,9 +190,11 @@ impl ExtnState {
         channel: PreLoadedExtnChannel,
         client: RippleClient,
     ) -> Result<(), RippleError> {
+        debug!("**** extn_state: start_channel");
         let sender = self.clone().get_sender();
         let symbol = channel.symbol.clone();
         let extn_id = channel.extn_id.clone();
+        debug!("**** extn_state: start_channel: create extn_sender");
         let extn_sender = ExtnSender::new(
             sender,
             extn_id.clone(),
@@ -200,16 +202,20 @@ impl ExtnState {
             symbol.fulfills.clone(),
             symbol.config.clone(),
         );
+        debug!("**** extn_state: start_channel: get_iec_channel");
         let (extn_tx, extn_rx) = ChannelsState::get_iec_channel();
         let extn_channel = channel.channel;
+        debug!("**** extn_state: start_channel: start extn_channel");
         thread::spawn(move || {
             (extn_channel.start)(extn_sender, extn_rx);
         });
+        debug!("**** extn_state: start_channel: start extn_channel");
         client.add_extn_sender(extn_id, symbol, extn_tx);
         Ok(())
     }
 
     pub fn extend_methods(&self, methods: Methods) {
+        debug!("**** extn_state: extend_methods");
         let mut methods_state = self.extn_methods.write().unwrap();
         let _ = methods_state.merge(methods);
     }

@@ -17,7 +17,7 @@
 
 use crate::bootstrap::boot::boot;
 use ripple_sdk::{
-    log::{error, info},
+    log::{debug, error, info},
     tokio,
     utils::logger::init_and_configure_logger,
 };
@@ -33,13 +33,16 @@ include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 #[tokio::main(worker_threads = 2)]
 async fn main() {
+    debug!("**** in Ripple main.rs");
     // Init logger
     if let Err(e) = init_and_configure_logger(SEMVER_LIGHTWEIGHT, "gateway".into(), None) {
-        println!("{:?} logger init error", e);
+        debug!("{:?} logger init error", e);
         return;
     }
     info!("version {}", SEMVER_LIGHTWEIGHT);
+    debug!("**** main -> build bootstate");
     let bootstate = BootstrapState::build().expect("Failure to init state for bootstrap");
+    debug!("**** bootstate: {:?}", bootstate);
 
     // bootstrap
     match boot(bootstate).await {

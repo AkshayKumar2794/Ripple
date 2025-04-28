@@ -20,7 +20,7 @@ use ripple_sdk::{
         bootstrap::{Bootstep, Bootstrap},
         RippleResponse,
     },
-    log::error,
+    log::{debug, error},
 };
 
 use crate::state::bootstrap_state::BootstrapState;
@@ -62,6 +62,7 @@ use super::{
 
 ///
 pub async fn boot(state: BootstrapState) -> RippleResponse {
+    debug!("**** boot: boot: in Ripple boot");
     let bootstrap = Bootstrap::new(state);
     execute_step(LoggingBootstrapStep, &bootstrap).await?;
     execute_step(StartCommunicationBroker, &bootstrap).await?;
@@ -82,9 +83,10 @@ async fn execute_step<T: Bootstep<BootstrapState>>(
     step: T,
     state: &Bootstrap<BootstrapState>,
 ) -> RippleResponse {
+    debug!("**** boot: boot: in execute_step");
     let name = step.get_name();
     if let Err(e) = state.step(step).await {
-        error!("Failed at Bootstrap step {}", name);
+        error!("**** Failed at Bootstrap step {}", name);
         Err(e)
     } else {
         Ok(())

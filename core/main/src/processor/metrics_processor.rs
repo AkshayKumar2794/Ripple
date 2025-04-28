@@ -24,6 +24,7 @@ use ripple_sdk::{
         },
         extn_client_message::ExtnMessage,
     },
+    log::debug,
     tokio::sync::mpsc::{Receiver as MReceiver, Sender as MSender},
 };
 
@@ -39,6 +40,7 @@ pub struct OpMetricsProcessor {
 
 impl OpMetricsProcessor {
     pub fn new(state: PlatformState) -> OpMetricsProcessor {
+        debug!("**** OpMetricsProcessor: new");
         OpMetricsProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

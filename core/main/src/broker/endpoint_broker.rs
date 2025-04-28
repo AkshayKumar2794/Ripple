@@ -83,6 +83,7 @@ pub struct BrokerCleaner {
 
 impl BrokerCleaner {
     async fn cleanup_session(&self, appid: &str) -> Result<String, RippleError> {
+        debug!("**** endpoint_broker: cleanup_session");
         if let Some(cleaner) = self.cleaner.clone() {
             if let Err(e) = cleaner.try_send(appid.to_owned()) {
                 error!("Couldnt cleanup {} {:?}", appid, e);
@@ -192,6 +193,7 @@ impl BrokerConnectRequest {
         endpoint: RuleEndpoint,
         reconnector: Sender<BrokerConnectRequest>,
     ) -> Self {
+        debug!("**** endpoint_broker: new");
         Self {
             key,
             endpoint,
@@ -207,6 +209,7 @@ impl BrokerConnectRequest {
         reconnector: Sender<BrokerConnectRequest>,
         session: Option<AccountSession>,
     ) -> Self {
+        debug!("**** endpoint_broker: new_with_sesssion");
         Self {
             key,
             endpoint,
@@ -230,6 +233,7 @@ impl BrokerRequest {
         workflow_callback: Option<BrokerCallback>,
         telemetry_response_listeners: Vec<Sender<BrokerOutput>>,
     ) -> BrokerRequest {
+        debug!("**** endpoint_broker: new");
         BrokerRequest {
             rpc: rpc_request.clone(),
             rule,
@@ -263,6 +267,7 @@ pub(crate) static ATOMIC_ID: AtomicU64 = AtomicU64::new(0);
 
 impl BrokerCallback {
     pub async fn send_json_rpc_api_response(&self, response: JsonRpcApiResponse) {
+        debug!("**** endpoint_broker: send_json_rpc_api_response");
         let output = BrokerOutput::new(response);
         if let Err(e) = self.sender.try_send(output) {
             error!("couldnt send response for {:?}", e);
@@ -270,6 +275,7 @@ impl BrokerCallback {
     }
     /// Default method used for sending errors via the BrokerCallback
     pub async fn send_error(&self, request: BrokerRequest, error: RippleError) {
+        debug!("**** endpoint_broker: send_error");
         let value = serde_json::to_value(JsonRpcError {
             code: JSON_RPC_STANDARD_ERROR_INVALID_PARAMS,
             message: format!("Error with {:?}", error),
@@ -354,6 +360,7 @@ impl From<CallContext> for BrokerContext {
 impl BrokerSender {
     // Method to send the request to the underlying broker for handling.
     pub async fn send(&self, request: BrokerRequest) -> RippleResponse {
+        debug!("**** endpoint_broker: send");
         if let Err(e) = self.sender.try_send(request) {
             error!("Error sending to broker {:?}", e);
             Err(RippleError::SendFailure)
@@ -385,6 +392,7 @@ pub enum HandleBrokerageError {
 }
 impl From<RuleRetrievalError> for HandleBrokerageError {
     fn from(value: RuleRetrievalError) -> Self {
+        debug!("**** endpoint_broker: from RuleRetrievalError");
         match value {
             RuleRetrievalError::RuleNotFound(e) => HandleBrokerageError::RuleNotFound(e),
             RuleRetrievalError::RuleNotFoundAsWildcard => {
@@ -432,6 +440,7 @@ pub enum BrokerEndpoint {
 }
 impl std::fmt::Display for BrokerEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        debug!("**** endpoint_broker: fmt");
         match self {
             BrokerEndpoint::BrokerSender(_) => write!(f, "BrokerSender"),
             BrokerEndpoint::Provider(_) => write!(f, "Provider"),
@@ -440,6 +449,7 @@ impl std::fmt::Display for BrokerEndpoint {
 }
 impl BrokerEndpoint {
     pub async fn send_request(self, request: BrokerRequest) -> RippleResponse {
+        debug!("**** endpoint_broker: send_request");
         match self {
             BrokerEndpoint::BrokerSender(broker_sender) => broker_sender
                 .sender
@@ -455,6 +465,7 @@ impl BrokerEndpoint {
 
 impl Default for EndpointBrokerState {
     fn default() -> Self {
+        debug!("**** endpoint_broker: default");
         Self {
             endpoint_map: Arc::new(RwLock::new(HashMap::new())),
             callback: BrokerCallback::default(),
@@ -476,6 +487,7 @@ impl EndpointBrokerState {
         rule_engine: RuleEngine,
         _ripple_client: RippleClient,
     ) -> Self {
+        debug!("**** endpoint_broker: new");
         let (reconnect_tx, _rec_tr) = mpsc::channel(2);
         let state = Self {
             endpoint_map: Arc::new(RwLock::new(HashMap::new())),
@@ -494,14 +506,17 @@ impl EndpointBrokerState {
         state
     }
     pub fn with_rules_engine(mut self, rule_engine: RuleEngine) -> Self {
+        debug!("**** endpoint_broker: with_rules_engine");
         self.rule_engine = rule_engine;
         self
     }
     pub fn add_rule(mut self, rule: Rule) -> Self {
+        debug!("**** endpoint_broker: add_rule");
         self.rule_engine.add_rule(rule);
         self
     }
     pub fn has_rule(&self, rule: &str) -> bool {
+        debug!("**** endpoint_broker: has_rule");
         self.rule_engine.has_rule(rule)
     }
     #[cfg(not(test))]
@@ -526,6 +541,7 @@ impl EndpointBrokerState {
     }
 
     fn get_request(&self, id: u64) -> Result<BrokerRequest, RippleError> {
+        debug!("**** endpoint_broker: get_request");
         let result = { self.request_map.read().unwrap().get(&id).cloned() };
         if result.is_none() {
             return Err(RippleError::InvalidInput);
@@ -539,6 +555,7 @@ impl EndpointBrokerState {
     }
 
     fn update_unsubscribe_request(&self, id: u64) {
+        debug!("**** endpoint_broker: update_unsubscribe_request");
         let mut result = self.request_map.write().unwrap();
         if let Some(mut value) = result.remove(&id) {
             value.subscription_processed = Some(true);
@@ -547,6 +564,7 @@ impl EndpointBrokerState {
     }
 
     fn get_extn_message(&self, id: u64, is_event: bool) -> Result<ExtnMessage, RippleError> {
+        debug!("**** endpoint_broker: get_extn_message");
         if is_event {
             let v = { self.extension_request_map.read().unwrap().get(&id).cloned() };
             if let Some(v1) = v {
@@ -576,6 +594,7 @@ impl EndpointBrokerState {
     //TODO: decide fate of this function
     #[allow(dead_code)]
     fn apply_request_rule(rpc_request: &BrokerRequest) -> Result<Value, RippleError> {
+        debug!("**** endpoint_broker: apply_request_rule");
         if let Ok(mut params) = serde_json::from_str::<Vec<Value>>(&rpc_request.rpc.params_json) {
             let last = if params.len() > 1 {
                 params.pop().unwrap()
@@ -675,6 +694,7 @@ impl EndpointBrokerState {
         workflow_callback: Option<BrokerCallback>,
         telemetry_response_listeners: Vec<Sender<BrokerOutput>>,
     ) -> BrokerRequest {
+        debug!("**** endpoint_broker: update_request");
         let id = Self::get_next_id();
         let mut rpc_request_c = rpc_request.clone();
         {
@@ -706,6 +726,7 @@ impl EndpointBrokerState {
         )
     }
     pub fn build_thunder_endpoint(&mut self) {
+        debug!("**** endpoint_broker: build_thunder_endpoint");
         if let Some(endpoint) = self.rule_engine.rules.endpoints.get("thunder").cloned() {
             let request = BrokerConnectRequest::new(
                 "thunder".to_owned(),
@@ -717,6 +738,7 @@ impl EndpointBrokerState {
     }
 
     pub fn build_other_endpoints(&mut self, ps: PlatformState, session: Option<AccountSession>) {
+        debug!("**** endpoint_broker: build_other_endpoints");
         for (key, endpoint) in self.rule_engine.rules.endpoints.clone() {
             // skip thunder endpoint as it is already built using build_thunder_endpoint
             if let RuleEndpointProtocol::Thunder = endpoint.protocol {
@@ -733,6 +755,7 @@ impl EndpointBrokerState {
     }
 
     fn add_endpoint(&mut self, key: String, endpoint: BrokerSender) -> &mut Self {
+        debug!("**** endpoint_broker: add_endpoint");
         {
             let mut endpoint_map = self.endpoint_map.write().unwrap();
             endpoint_map.insert(key, endpoint);
@@ -740,10 +763,15 @@ impl EndpointBrokerState {
         self
     }
     pub fn get_endpoints(&self) -> HashMap<String, BrokerSender> {
+        debug!("**** endpoint_broker: get_endpoints");
         self.endpoint_map.read().unwrap().clone()
     }
 
     fn build_endpoint(&mut self, ps: Option<PlatformState>, request: BrokerConnectRequest) {
+        debug!(
+            "**** endpoint_broker: build_endpoint: Building endpoint for {:?}",
+            request
+        );
         let endpoint = request.endpoint.clone();
         let key = request.key.clone();
         let (broker, cleaner) = match endpoint.protocol {
@@ -867,6 +895,7 @@ impl EndpointBrokerState {
         session: Option<Session>,
         telemetry_response_listeners: Vec<Sender<BrokerOutput>>,
     ) -> bool {
+        debug!("**** endpoint_broker: handle_brokerage");
         LogSignal::new(
             "handle_brokerage".to_string(),
             "starting brokerage".to_string(),
@@ -891,6 +920,7 @@ impl EndpointBrokerState {
         rule: &Rule,
         broker_callback: BrokerCallback,
     ) -> Result<BrokerEndpoint, HandleBrokerageError> {
+        debug!("**** endpoint_broker: get_endpoint");
         /*
         if endpoint is defined, try to get it
         else if static rule, get thunder broker
@@ -923,6 +953,7 @@ impl EndpointBrokerState {
         permissions: Vec<FireboltPermission>,
         session: Option<Session>,
     ) -> Result<RenderedRequest, HandleBrokerageError> {
+        debug!("**** endpoint_broker: render_brokered_request");
         LogSignal::new(
             "render_brokered_request".to_string(),
             "starting render".to_string(),
@@ -970,6 +1001,7 @@ impl EndpointBrokerState {
         session: Option<Session>,
         telemetry_response_listeners: Vec<Sender<BrokerOutput>>,
     ) -> Result<RenderedRequest, HandleBrokerageError> {
+        debug!("**** endpoint_broker: handle_brokerage_workflow");
         /*if rule not found, "unhandled https://github.com/rdkcentral/Ripple/blob/ae3fcd78b055cf70022959bf827de9ed569762aa/core/main/src/broker/endpoint_broker.rs#L719" */
         let rule: Rule = match self.get_broker_rule(&rpc_request)? {
             RuleRetrieved::ExactMatch(rule) | RuleRetrieved::WildcardMatch(rule) => rule,
@@ -1097,6 +1129,7 @@ impl EndpointBrokerState {
 
     // Method to cleanup all subscription on App termination
     pub async fn cleanup_for_app(&self, app_id: &str) {
+        debug!("**** endpoint_broker: cleanup_for_app");
         let cleaners = { self.cleaner_list.read().unwrap().clone() };
 
         for cleaner in cleaners {
@@ -1128,6 +1161,7 @@ pub trait EndpointBroker {
     /// Adds BrokerContext to a given request used by the Broker Implementations
     /// just before sending the data through the protocol
     fn update_request(rpc_request: &BrokerRequest) -> Result<String, RippleError> {
+        debug!("**** endpoint_broker: update_request");
         let v = Self::apply_request_rule(rpc_request)?;
         trace!("transformed request {:?}", v);
         let id = rpc_request.rpc.ctx.call_id;
@@ -1152,6 +1186,7 @@ pub trait EndpointBroker {
 
     /// Generic method which takes the given parameters from RPC request and adds rules using rule engine
     fn apply_request_rule(rpc_request: &BrokerRequest) -> Result<Value, RippleError> {
+        debug!("**** endpoint_broker: apply_request_rule");
         if let Ok(mut params) = serde_json::from_str::<Vec<Value>>(&rpc_request.rpc.params_json) {
             let last = if params.len() > 1 {
                 params.pop().unwrap()
@@ -1207,6 +1242,7 @@ pub trait EndpointBroker {
         callback: BrokerCallback,
         _params: Option<Value>,
     ) -> Result<BrokerOutput, RippleError> {
+        debug!("**** endpoint_broker: handle_jsonrpc_response");
         let mut final_result = Err(RippleError::ParseError);
         if let Ok(data) = serde_json::from_slice::<JsonRpcApiResponse>(result) {
             final_result = Ok(BrokerOutput::new(data));
@@ -1237,6 +1273,7 @@ pub struct BrokerOutputForwarder;
 
 impl BrokerOutputForwarder {
     pub fn start_forwarder(mut platform_state: PlatformState, mut rx: Receiver<BrokerOutput>) {
+        debug!("**** endpoint_broker: start_forwarder");
         // set up the event utility
         let event_utility = Arc::new(EventManagementUtility::new());
         event_utility.register_custom_functions();

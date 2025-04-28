@@ -39,6 +39,7 @@ pub struct StoreUserGrantsProcessor {
 
 impl StoreUserGrantsProcessor {
     pub fn new(state: PlatformState) -> StoreUserGrantsProcessor {
+        debug!("**** StoreUserGrantsProcessor: new");
         StoreUserGrantsProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

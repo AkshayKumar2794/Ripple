@@ -22,7 +22,7 @@ use ripple_sdk::{
     async_channel::{unbounded, Receiver as CReceiver, Sender as CSender},
     extn::ffi::ffi_message::CExtnMessage,
     framework::bootstrap::TransientChannel,
-    log::{error, info, warn},
+    log::{debug, error, info, warn},
     tokio::sync::mpsc::{self, Receiver, Sender},
     utils::error::RippleError,
 };
@@ -115,14 +115,20 @@ pub struct BootstrapState {
 
 impl BootstrapState {
     pub fn build() -> Result<BootstrapState, RippleError> {
+        debug!("**** Ripple Bootstrapping ****");
         let channels_state = ChannelsState::new();
+        debug!("**** ChannelsState initialized");
         let client = RippleClient::new(channels_state.clone());
+        debug!("**** RippleClient initialized");
         let Ok((extn_manifest, device_manifest)) = RippleManifestLoader::initialize() else {
             error!("Error initializing manifests");
             return Err(RippleError::BootstrapError);
         };
+        debug!("**** Manifests initialized");
         let app_manifest_result = LoadAppLibraryStep::load_app_library();
         let extn_state = ExtnState::new(channels_state.clone(), extn_manifest.clone());
+        debug!("**** ExtnState initialized");
+
         let platform_state = PlatformState::new(
             extn_manifest,
             device_manifest,
@@ -130,6 +136,7 @@ impl BootstrapState {
             app_manifest_result,
             ripple_version_from_etc(),
         );
+        debug!("**** PlatformState initialized");
 
         fn ripple_version_from_etc() -> Option<String> {
             static RIPPLE_VER_FILE_DEFAULT: &str = "/etc/rippleversion.txt";

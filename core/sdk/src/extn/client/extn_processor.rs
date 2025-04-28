@@ -305,6 +305,7 @@ pub trait ExtnEventProcessor: ExtnStreamProcessor + Send + Sync + 'static {
     }
 
     async fn run(&mut self) {
+        debug!("**** extn_processor: run");
         debug!("starting event processor for {:?}", self.contract());
         start_rx_stream!(
             Self,

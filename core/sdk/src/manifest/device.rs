@@ -15,6 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use log::debug;
+
 use crate::{api::manifest::device_manifest::DeviceManifest, log::info, utils::error::RippleError};
 pub struct LoadDeviceManifestStep;
 
@@ -50,6 +52,7 @@ fn try_manifest_files() -> Result<DeviceManifest, RippleError> {
 }
 
 fn load_from_env() -> Result<(String, DeviceManifest), RippleError> {
+    debug!("**** device: load_from_env");
     let device_manifest_path = std::env::var("DEVICE_MANIFEST");
     match device_manifest_path {
         Ok(path) => DeviceManifest::load(path),
@@ -58,6 +61,7 @@ fn load_from_env() -> Result<(String, DeviceManifest), RippleError> {
 }
 
 fn load_from_home() -> Result<(String, DeviceManifest), RippleError> {
+    debug!("**** device: load_from_home");
     match std::env::var("HOME") {
         Ok(home) => DeviceManifest::load(format!("{}/.ripple/firebolt-device-manifest.json", home)),
         Err(_) => Err(RippleError::MissingInput),
@@ -65,5 +69,6 @@ fn load_from_home() -> Result<(String, DeviceManifest), RippleError> {
 }
 
 fn load_from_etc() -> Result<(String, DeviceManifest), RippleError> {
+    debug!("**** device: load_from_etc");
     DeviceManifest::load("/etc/firebolt-device-manifest.json".into())
 }

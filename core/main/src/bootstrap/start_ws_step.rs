@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+use ripple_sdk::log::debug;
 use ripple_sdk::{
     async_trait::async_trait, framework::bootstrap::Bootstep, tokio, utils::error::RippleError,
 };
@@ -32,20 +33,31 @@ impl Bootstep<BootstrapState> for StartWsStep {
     }
 
     async fn setup(&self, state: BootstrapState) -> Result<(), RippleError> {
+        debug!("**** StartWsStep setup");
+        debug!("**** StartWsStep setup - starting websocket server");
         let manifest = state.platform_state.get_device_manifest();
+        debug!("**** StartWsStep setup - got manifest");
         let iai = manifest.get_internal_app_id();
+        debug!("**** StartWsStep setup - got internal_app_id");
         let ws_enabled = manifest.get_web_socket_enabled();
+        debug!("**** StartWsStep setup - got web_socket_enabled");
         let internal_ws_enabled = manifest.get_internal_ws_enabled();
+        debug!("**** StartWsStep setup - got internal_ws_enabled");
         let iai_c = iai.clone();
         if ws_enabled {
             let ws_addr = manifest.get_ws_gateway_host();
             let state_for_ws = state.platform_state.clone();
+            debug!("**** StartWsStep setup - got ws_addr");
+            debug!("**** StartWsStep setup - got state_for_ws");
+            debug!("**** StartWsStep setup - spawning websocket server");
             tokio::spawn(async move {
                 FireboltWs::start(ws_addr.as_str(), state_for_ws, true, iai.clone()).await;
             });
         }
 
         if internal_ws_enabled {
+            debug!("**** StartWsStep setup - got internal_ws_enabled");
+            debug!("**** StartWsStep setup - spawning internal websocket server");
             let ws_addr = manifest.get_internal_gateway_host();
             let state_for_ws = state.platform_state;
             tokio::spawn(async move {

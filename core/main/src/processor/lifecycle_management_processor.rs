@@ -27,7 +27,7 @@ use ripple_sdk::{
         },
         extn_client_message::{ExtnMessage, ExtnPayload, ExtnPayloadProvider},
     },
-    log::error,
+    log::{debug, error},
     tokio::sync::{mpsc::Sender, oneshot},
 };
 
@@ -42,6 +42,7 @@ pub struct LifecycleManagementProcessor {
 
 impl LifecycleManagementProcessor {
     pub fn new(client: RippleClient) -> LifecycleManagementProcessor {
+        debug!("**** LifecycleManagementProcessor: new");
         LifecycleManagementProcessor {
             client,
             streamer: DefaultExtnStreamer::new(),

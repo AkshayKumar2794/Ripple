@@ -28,6 +28,7 @@ use crate::{
     tokio::sync::{mpsc::Receiver as MReceiver, mpsc::Sender as MSender},
 };
 
+use log::debug;
 #[cfg(not(test))]
 use log::error;
 
@@ -53,6 +54,7 @@ impl WaitForStatusReadyEventProcessor {
         capability: ExtnId,
         sender: MSender<ExtnStatus>,
     ) -> WaitForStatusReadyEventProcessor {
+        debug!("**** wait_for_service_processors: new");
         WaitForStatusReadyEventProcessor {
             state: WaitForState { capability, sender },
             streamer: DefaultExtnStreamer::new(),

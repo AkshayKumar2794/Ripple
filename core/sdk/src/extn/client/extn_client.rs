@@ -117,6 +117,7 @@ impl ExtnClient {
     ///
     /// `sender` - [ExtnSender] object provided by `Main` Application with a unique [ExtnCapability]
     pub fn new(receiver: CReceiver<CExtnMessage>, sender: ExtnSender) -> ExtnClient {
+        debug!("**** extn_client: new");
         ExtnClient {
             receiver,
             sender,

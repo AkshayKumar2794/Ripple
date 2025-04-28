@@ -47,6 +47,7 @@ pub struct JsonRpseeExtnBuilder {
 /// # Safety
 /// TODO: Why is this unsafe allowed here? https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 pub unsafe fn load_jsonrpsee_methods(lib: &Library) -> Option<Box<JsonRpseeExtnBuilder>> {
+    debug!("**** ffi_jsonrpsee: load_jsonrpsee_methods: Loading jsonrpsee methods from library");
     type LibraryFfi = unsafe fn() -> *mut JsonRpseeExtnBuilder;
     let r = lib.get(b"jsonrpsee_extn_builder_create");
     match r {

@@ -24,6 +24,7 @@ use ripple_sdk::{
         },
         extn_client_message::{ExtnMessage, ExtnPayload, ExtnPayloadProvider, ExtnResponse},
     },
+    log::debug,
     serde_json,
     tokio::sync::mpsc::{Receiver as MReceiver, Sender as MSender},
 };
@@ -40,6 +41,7 @@ pub struct ConfigRequestProcessor {
 
 impl ConfigRequestProcessor {
     pub fn new(state: PlatformState) -> ConfigRequestProcessor {
+        debug!("**** ConfigRequestProcessor: new");
         ConfigRequestProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

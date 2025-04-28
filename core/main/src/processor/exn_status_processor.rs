@@ -24,8 +24,8 @@ use ripple_sdk::{
         },
         extn_client_message::ExtnMessage,
     },
-    log::error,
-    tokio::sync::{mpsc::Receiver as MReceiver, mpsc::Sender as MSender},
+    log::{debug, error},
+    tokio::sync::mpsc::{Receiver as MReceiver, Sender as MSender},
 };
 
 use crate::state::extn_state::ExtnState;
@@ -40,6 +40,7 @@ pub struct ExtnStatusProcessor {
 /// Bootstrap uses the [WaitForStatusReadyEventProcessor] to await during Device Connnection before starting the gateway.
 impl ExtnStatusProcessor {
     pub fn new(state: ExtnState) -> ExtnStatusProcessor {
+        debug!("**** ExtnStatusProcessor: new");
         ExtnStatusProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

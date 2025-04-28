@@ -24,6 +24,7 @@ use ripple_sdk::{
         },
         extn_client_message::ExtnMessage,
     },
+    log::debug,
     tokio::sync::mpsc::Sender,
 };
 
@@ -40,6 +41,7 @@ pub struct RpcGatewayProcessor {
 
 impl RpcGatewayProcessor {
     pub fn new(client: RippleClient) -> RpcGatewayProcessor {
+        debug!("**** Rpc_Gateway_Processor: new");
         RpcGatewayProcessor {
             client,
             streamer: DefaultExtnStreamer::new(),

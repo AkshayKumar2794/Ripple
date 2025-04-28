@@ -59,6 +59,7 @@ pub struct RouterState {
 
 impl RouterState {
     pub fn new() -> RouterState {
+        debug!("**** RPC_Router: new: Creating Router State");
         RouterState {
             methods: Arc::new(RwLock::new(Methods::new())),
             resources: Resources::default(),
@@ -66,11 +67,13 @@ impl RouterState {
     }
 
     pub fn update_methods(&self, methods: Methods) {
+        debug!("**** RPC_Router: update_methods: Updating Router State");
         let mut methods_state = self.methods.write().unwrap();
         let _ = methods_state.merge(methods.initialize_resources(&self.resources).unwrap());
     }
 
     fn get_methods(&self) -> Methods {
+        debug!("**** RPC_Router: get_methods: Getting Router State");
         self.methods.read().unwrap().clone()
     }
 }
@@ -87,6 +90,7 @@ async fn resolve_route(
     resources: Resources,
     req: RpcRequest,
 ) -> Result<ApiMessage, RippleError> {
+    debug!("**** RPC_Router: resolve_route");
     info!("Routing {}", req.method);
     let id = Id::Number(req.ctx.call_id);
     let request_c = req.clone();
@@ -203,6 +207,7 @@ async fn resolve_route(
 
 impl RpcRouter {
     pub async fn route(mut state: PlatformState, mut req: RpcRequest, session: Session) {
+        debug!("**** RPC_Router: route");
         let methods = state.router_state.get_methods();
         let resources = state.router_state.resources.clone();
 
@@ -227,6 +232,7 @@ impl RpcRouter {
         req: RpcRequest,
         extn_msg: ExtnMessage,
     ) {
+        debug!("**** RPC_Router: route_extn_protocol");
         let methods = state.router_state.get_methods();
         let resources = state.router_state.resources.clone();
 

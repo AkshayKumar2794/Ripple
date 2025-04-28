@@ -23,6 +23,7 @@ use ripple_sdk::{
     },
     async_trait::async_trait,
     framework::{bootstrap::Bootstep, RippleResponse},
+    log::debug,
     tokio::sync::oneshot,
     utils::error::RippleError,
 };
@@ -40,6 +41,7 @@ impl Bootstep<BootstrapState> for CheckLauncherStep {
         "CheckLauncherStep".into()
     }
     async fn setup(&self, state: BootstrapState) -> RippleResponse {
+        debug!("**** CheckLauncherStep setup");
         if state.platform_state.has_internal_launcher() {
             let app = state
                 .platform_state

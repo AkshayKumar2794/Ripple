@@ -2,7 +2,7 @@ use crate::{state::bootstrap_state::BootstrapState, SEMVER_LIGHTWEIGHT};
 use ripple_sdk::{
     async_trait::async_trait,
     framework::{bootstrap::Bootstep, RippleResponse},
-    log,
+    log::{self, debug},
     utils::logger::init_and_configure_logger,
 };
 
@@ -15,6 +15,7 @@ impl Bootstep<BootstrapState> for LoggingBootstrapStep {
     }
 
     async fn setup(&self, state: BootstrapState) -> RippleResponse {
+        debug!("**** LoggingBootstrapStep: setup");
         let manifest = state.platform_state.get_device_manifest();
         let log_signal_level: log::LevelFilter = manifest
             .configuration

@@ -21,7 +21,7 @@ use ripple_sdk::api::firebolt::fb_capabilities::{
     DenyReason, DenyReasonWithCap, FireboltPermission,
 };
 use ripple_sdk::api::gateway::rpc_gateway_api::RpcRequest;
-use ripple_sdk::log::trace;
+use ripple_sdk::log::{debug, trace};
 
 use crate::service::user_grants::GrantState;
 use crate::state::openrpc_state::ApiSurface;
@@ -34,6 +34,7 @@ impl FireboltGatekeeper {
         platform_state: &PlatformState,
         perm_set: &Vec<FireboltPermission>,
     ) -> Vec<FireboltPermission> {
+        debug!("**** firebolt_gatekeeper: resolve_dependencies");
         let mut resolved_perm_set: Vec<FireboltPermission> = Default::default();
         let cap_dependencies: &HashMap<FireboltPermission, Vec<FireboltPermission>> =
             &platform_state
@@ -54,6 +55,7 @@ impl FireboltGatekeeper {
         method: &str,
         secure: bool,
     ) -> Option<Vec<FireboltPermission>> {
+        debug!("**** firebolt_gatekeeper: get_resolved_caps_for_method");
         trace!(
             "get_resolved_caps_for_method called with params: method {}, secure: {}",
             method,
@@ -80,6 +82,7 @@ impl FireboltGatekeeper {
         state: PlatformState,
         request: RpcRequest,
     ) -> Result<Vec<FireboltPermission>, DenyReasonWithCap> {
+        debug!("**** firebolt_gatekeeper: gate");
         let caps =
             Self::get_resolved_caps_for_method(&state, &request.method, request.ctx.gateway_secure)
                 .ok_or(DenyReasonWithCap {
@@ -132,6 +135,7 @@ impl FireboltGatekeeper {
         request: RpcRequest,
         filtered_perm_list: Vec<FireboltPermission>,
     ) -> Result<(), DenyReasonWithCap> {
+        debug!("**** firebolt_gatekeeper: permissions_check");
         // permission checks
         let open_rpc_state = state.clone().open_rpc_state;
         // check if the app or method is in permission exclusion list

@@ -16,7 +16,7 @@
 //
 
 use jsonrpsee::RpcModule;
-use ripple_sdk::log::error;
+use ripple_sdk::log::{debug, error};
 
 use crate::state::platform_state::PlatformState;
 
@@ -44,6 +44,7 @@ where
     I: std::marker::Send + 'static,
     I: std::marker::Sync,
 {
+    debug!("**** epc: register_aliases");
     let rpc_aliases = platform_state.get_rpc_aliases();
     let mut registered_aliases = Vec::new();
     for method in rpc_module.method_names() {

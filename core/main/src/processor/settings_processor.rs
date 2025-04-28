@@ -89,6 +89,7 @@ pub struct SettingsProcessor {
 
 impl SettingsProcessor {
     pub fn new(state: PlatformState) -> SettingsProcessor {
+        debug!("**** SettingsProcessor: new");
         SettingsProcessor {
             state,
             streamer: DefaultExtnStreamer::new(),

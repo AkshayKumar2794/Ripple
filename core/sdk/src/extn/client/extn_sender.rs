@@ -63,6 +63,7 @@ impl ExtnSender {
         fulfills: Vec<String>,
         config: Option<HashMap<String, String>>,
     ) -> Self {
+        debug!("**** extn_sender: new: id: {:?}", id);
         ExtnSender {
             tx,
             id,

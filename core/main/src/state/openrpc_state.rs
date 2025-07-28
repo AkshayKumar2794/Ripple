@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#[cfg(feature = "openrpc_validation")]
 use openrpc_validator::jsonschema::JSONSchema;
 use ripple_sdk::log::{debug, error, info};
 use ripple_sdk::{api::firebolt::fb_openrpc::CapabilityPolicy, serde_json};
@@ -38,6 +39,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+#[cfg(feature = "openrpc_validation")]
 use openrpc_validator::{FireboltOpenRpc as FireboltOpenRpcValidator, RpcMethodValidator};
 
 #[derive(Debug, Clone)]
@@ -75,8 +77,10 @@ pub struct OpenRpcState {
     cap_policies: Arc<RwLock<HashMap<String, CapabilityPolicy>>>,
     extended_rpc: Arc<RwLock<Vec<FireboltOpenRpc>>>,
     provider_relation_map: Arc<RwLock<HashMap<String, ProviderRelationSet>>>,
+    #[cfg(feature = "openrpc_validation")]
     openrpc_validator: Arc<RwLock<RpcMethodValidator>>,
     provider_registrations: Vec<String>,
+    #[cfg(feature = "openrpc_validation")]
     json_schema_cache: Arc<RwLock<HashMap<String, JSONSchema>>>,
 }
 
@@ -125,9 +129,12 @@ impl OpenRpcState {
             .expect("Failed parsing FireboltVersionManifest from open RPC file");
         let firebolt_open_rpc: FireboltOpenRpc = version_manifest.clone().into();
         let ripple_open_rpc: FireboltOpenRpc = FireboltOpenRpc::default();
+        #[cfg(feature = "openrpc_validation")]
         let openrpc_validator: FireboltOpenRpcValidator = serde_json::from_str(&open_rpc_path)
             .expect("Failed parsing FireboltOpenRpcValidator from open RPC file");
+        #[cfg(feature = "openrpc_validation")]
         let mut rpc_method_validator = RpcMethodValidator::new();
+        #[cfg(feature = "openrpc_validation")]
         rpc_method_validator.add_schema(openrpc_validator);
         let v = OpenRpcState {
             firebolt_cap_map: Arc::new(RwLock::new(firebolt_open_rpc.get_methods_caps())),
@@ -137,8 +144,10 @@ impl OpenRpcState {
             open_rpc: firebolt_open_rpc.clone(),
             extended_rpc: Arc::new(RwLock::new(Vec::new())),
             provider_relation_map: Arc::new(RwLock::new(HashMap::new())),
+            #[cfg(feature = "openrpc_validation")]
             openrpc_validator: Arc::new(RwLock::new(rpc_method_validator)),
             provider_registrations,
+            #[cfg(feature = "openrpc_validation")]
             json_schema_cache: Arc::new(RwLock::new(HashMap::new())),
         };
         v.build_provider_relation_sets(&firebolt_open_rpc.methods);
@@ -146,6 +155,7 @@ impl OpenRpcState {
             if v.add_extension_open_rpc(&path).is_err() {
                 error!("Error adding extn_sdk from {path}");
             }
+            #[cfg(feature = "openrpc_validation")]
             if v.add_extension_open_rpc_to_validator(path).is_err() {
                 error!("Error adding openrpc extn_sdk to validator");
             }
@@ -171,6 +181,7 @@ impl OpenRpcState {
     }
 
     // Add extension open rpc to the validator
+    #[cfg(feature = "openrpc_validation")]
     pub fn add_extension_open_rpc_to_validator(&self, path: String) -> Result<(), RippleError> {
         let extension_open_rpc_string = load_extension_open_rpc(path);
         if let Some(open_rpc) = extension_open_rpc_string {
@@ -334,6 +345,7 @@ impl OpenRpcState {
         self.open_rpc.info.clone()
     }
 
+    #[cfg(feature = "openrpc_validation")]
     pub fn get_openrpc_validator(&self) -> RpcMethodValidator {
         self.openrpc_validator.read().unwrap().clone()
     }
@@ -434,11 +446,13 @@ impl OpenRpcState {
             .extend(provider_relation_sets)
     }
 
+    #[cfg(feature = "openrpc_validation")]
     pub fn add_json_schema_cache(&self, method: String, schema: JSONSchema) {
         let mut json_cache = self.json_schema_cache.write().unwrap();
         let _ = json_cache.insert(method, schema);
     }
 
+    #[cfg(feature = "openrpc_validation")]
     pub fn validate_schema(&self, method: &str, value: &Value) -> Result<(), Option<String>> {
         let json_cache = self.json_schema_cache.read().unwrap();
         if let Some(schema) = json_cache.get(method) {

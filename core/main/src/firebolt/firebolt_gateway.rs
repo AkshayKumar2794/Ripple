@@ -481,6 +481,7 @@ fn validate_request(
         let method_name = request.method.to_lowercase();
 
         // Check if the cache is already created using add_json_schema_cache below
+        #[cfg(feature = "openrpc_validation")] {
         let v = open_rpc_state.validate_schema(&method_name, param);
         if v.is_ok() {
             // Params are valid
@@ -524,6 +525,9 @@ fn validate_request(
                 request.method
             );
         }
+        }
+        #[cfg(not(feature = "openrpc_validation"))]
+            info!("openrpc_validator is not enabled");
     }
 
     Ok(())

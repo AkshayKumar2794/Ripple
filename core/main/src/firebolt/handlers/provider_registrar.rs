@@ -308,6 +308,7 @@ impl ProviderRegistrar {
 
             let result_value = match event_data {
                 Value::Object(ref event_data_map) => {
+                    #[cfg(feature = "openrpc_validation")] {
                     if let Some(event_schema_map) = context
                         .platform_state
                         .open_rpc_state
@@ -341,6 +342,11 @@ impl ProviderRegistrar {
 
                         Value::Object(result_map)
                     } else {
+                        event_data.clone()
+                    }
+                    }
+                    #[cfg(not(feature = "openrpc_validation"))] {
+                        info!("openrpc_validator is not enabled");
                         event_data.clone()
                     }
                 }
@@ -528,7 +534,7 @@ impl ProviderRegistrar {
                         return Ok(provider_response_value);
                     }
                 };
-
+                #[cfg(feature = "openrpc_validation")] 
                 let result_properties_map = match context
                     .platform_state
                     .open_rpc_state
@@ -543,7 +549,8 @@ impl ProviderRegistrar {
                         return Err(Error::Custom(String::from("Result schema not found")));
                     }
                 };
-
+                #[cfg(not(feature = "openrpc_validation"))]
+                let result_properties_map = provider_response_value_map.clone();
                 // Inject the provider app ID if the field exists in the provided-to response schema, the other field will be
                 // the provider response. The firebolt spec is not ideal in that the provider response data is captured
                 // within a field of the provided-to's response object, hence the somewhat arbritrary logic here. Ideally
@@ -569,7 +576,7 @@ impl ProviderRegistrar {
                                 continue;
                             }
                         };
-
+                        #[cfg(feature = "openrpc_validation")] {
                         if let Some(ref_properties_map) = context
                             .platform_state
                             .open_rpc_state
@@ -594,6 +601,9 @@ impl ProviderRegistrar {
                         } else {
                             error!("callback_provider_invoker: ref_properties_map not found");
                         }
+                        }
+                        #[cfg(not(feature = "openrpc_validation"))]
+                            info!("openrpc_validator is not enabled");
                     } else {
                         error!("callback_provider_invoker: Not an object: key={}", key);
                     }

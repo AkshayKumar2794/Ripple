@@ -52,7 +52,7 @@ use crate::{
 };
 
 use super::{
-    cap::cap_state::CapState, openrpc_state::OpenRpcState, ops_metrics_state::OpMetricState,
+    cap::cap_state::CapState, ops_metrics_state::OpMetricState,
     ripple_cache::RippleCache, session_state::SessionState,
 };
 
@@ -103,7 +103,7 @@ pub struct PlatformState {
     pub app_events_state: AppEventsState,
     pub provider_broker_state: ProviderBrokerState,
     pub app_manager_state: AppManagerState,
-    pub open_rpc_state: OpenRpcState,
+    // pub open_rpc_state: OpenRpcState, // Removed
     pub router_state: RouterState,
     pub metrics: OpMetricState,
     pub device_session_id: DeviceSessionIdentifier,
@@ -138,7 +138,7 @@ impl PlatformState {
             app_events_state: AppEventsState::default(),
             provider_broker_state: ProviderBrokerState::default(),
             app_manager_state: AppManagerState::new(&manifest.configuration.saved_dir),
-            open_rpc_state: OpenRpcState::new(Some(exclusory), extn_sdks, provider_registations),
+            // open_rpc_state: OpenRpcState::new(Some(exclusory), extn_sdks, provider_registations),
             router_state: RouterState::new(),
             metrics: metrics_state.clone(),
             device_session_id: DeviceSessionIdentifier::default(),

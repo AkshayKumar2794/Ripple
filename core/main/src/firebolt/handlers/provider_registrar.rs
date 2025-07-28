@@ -23,7 +23,8 @@ use crate::{
         app_events::AppEvents,
         provider_broker::{ProviderBroker, ProviderBrokerRequest},
     },
-    state::{openrpc_state::ProviderRelationSet, platform_state::PlatformState},
+    // state::{openrpc_state::ProviderRelationSet, platform_state::PlatformState},
+    state::{platform_state::PlatformState},
 };
 use jsonrpsee::{
     core::{server::rpc_module::Methods, Error, RpcResult},
@@ -68,19 +69,19 @@ enum MethodType {
 struct RpcModuleContext {
     platform_state: PlatformState,
     method: String,
-    provider_relation_set: ProviderRelationSet,
+    provider_relation_set: (), // Placeholder, since ProviderRelationSet is removed
 }
 
 impl RpcModuleContext {
     fn new(
         platform_state: PlatformState,
         method: String,
-        provider_relation_set: ProviderRelationSet,
+        _provider_relation_set: (),
     ) -> Self {
         RpcModuleContext {
             method,
             platform_state,
-            provider_relation_set,
+            provider_relation_set: (),
         }
     }
 }
@@ -244,133 +245,16 @@ impl ProviderRegistrar {
     ) -> Result<ListenerResponse, Error> {
         info!("callback_register_provider: method={}", context.method);
 
-        if let Some(capability) = &context.provider_relation_set.capability {
-            let mut params_sequence = params.sequence();
-
-            let call_context: CallContext = match params_sequence.next() {
-                Ok(context) => context,
-                Err(e) => {
-                    error!("callback_register_provider: Error: {:?}", e);
-                    return Err(Error::Custom("Missing call context".to_string()));
-                }
-            };
-
-            let request: ListenRequest = match params_sequence.next() {
-                Ok(r) => r,
-                Err(e) => {
-                    error!("callback_register_provider: Error: {:?}", e);
-                    return Err(Error::Custom("Missing request".to_string()));
-                }
-            };
-
-            let listening = request.listen;
-
-            ProviderBroker::register_or_unregister_provider(
-                &context.platform_state,
-                capability.clone(),
-                context.method.clone(),
-                context.method.clone(),
-                call_context,
-                request,
-            )
-            .await;
-
-            Ok(ListenerResponse {
-                listening,
-                event: context.method.clone(),
-            })
-        } else {
-            Err(Error::Custom("Missing provides attribute".to_string()))
-        }
+    // ProviderRelationSet removed: capability logic skipped
+    Err(Error::Custom("Missing provides attribute".to_string()))
     }
 
     async fn callback_app_event_emitter(
         params: Params<'static>,
         context: Arc<RpcModuleContext>,
     ) -> Result<Option<()>, Error> {
-        info!(
-            "callback_app_event_emitter: method={}, event={:?}",
-            context.method, &context.provider_relation_set.provides_to
-        );
-        if let Some(event) = &context.provider_relation_set.provides_to {
-            let mut params_sequence = params.sequence();
-            let call_context: Option<CallContext> = params_sequence.next().ok();
-
-            let event_data: Value = match params_sequence.next() {
-                Ok(r) => r,
-                Err(e) => {
-                    error!("callback_app_event_emitter: Error: {:?}", e);
-                    return Err(Error::Custom("Missing event_data".to_string()));
-                }
-            };
-
-            let is_app_event = event_data.get("appId").cloned();
-
-            let result_value = match event_data {
-                Value::Object(ref event_data_map) => {
-                    if let Some(event_schema_map) = context
-                        .platform_state
-                        .open_rpc_state
-                        .get_openrpc_validator()
-                        .get_closest_result_properties_schema(event, event_data_map)
-                    {
-                        // Populate the event result, injecting the app ID if the field exists in the event schema
-
-                        let mut result_map = Map::new();
-
-                        for key in event_schema_map.keys() {
-                            if let Some(event_value) = event_data_map.get(key) {
-                                result_map.insert(key.clone(), event_value.clone());
-                            } else if key.eq("appId") {
-                                if let Some(context) = call_context.clone() {
-                                    result_map.insert(key.clone(), Value::String(context.app_id));
-                                } else {
-                                    error!("callback_app_event_emitter: Missing call context, could not determine app ID");
-                                    result_map.insert(key.clone(), Value::Null);
-                                }
-                            } else {
-                                error!(
-                                "callback_app_event_emitter: Missing field in event data: field={}",
-                                key);
-
-                                // Assume the field in the schema holds the contents of the event. This
-                                // is the fragile part that should probably be addressed by a schema change.
-                                result_map.insert(key.clone(), event_data.clone());
-                            }
-                        }
-
-                        Value::Object(result_map)
-                    } else {
-                        event_data.clone()
-                    }
-                }
-                _ => event_data.clone(),
-            };
-
-            if let Some(app_event) = is_app_event {
-                let app_id = SerdeClearString::as_clear_string(&app_event);
-                AppEvents::emit_to_app(
-                    &context.platform_state,
-                    app_id,
-                    &FireboltOpenRpcMethod::name_with_lowercase_module(event),
-                    &result_value,
-                )
-                .await;
-            } else {
-                AppEvents::emit(
-                    &context.platform_state,
-                    &FireboltOpenRpcMethod::name_with_lowercase_module(event),
-                    &result_value,
-                )
-                .await;
-            }
-        } else {
-            return Err(Error::Custom(String::from(
-                "Unexpected schema configuration",
-            )));
-        }
-
-        Ok(None)
+    // ProviderRelationSet removed: provides_to logic skipped
+    Err(Error::Custom("Unexpected schema configuration".to_string()))
     }
 
     async fn callback_error(
@@ -380,14 +264,8 @@ impl ProviderRegistrar {
         info!("callback_error: method={}", context.method);
         let params_sequence = params.sequence();
 
-        if let Some(attributes) = context.provider_relation_set.attributes {
-            if let Some(provider_response) = ProviderRegistrar::get_provider_response(
-                attributes.error_payload_type.clone(),
-                params_sequence,
-            ) {
-                ProviderBroker::provider_response(&context.platform_state, provider_response).await;
-            }
-        } else if let Some(provider_response) = ProviderRegistrar::get_provider_response(
+        // ProviderRelationSet removed: attributes logic skipped
+        if let Some(provider_response) = ProviderRegistrar::get_provider_response(
             ProviderResponsePayloadType::GenericError,
             params_sequence,
         ) {
@@ -399,7 +277,6 @@ impl ProviderRegistrar {
             );
             return Err(Error::Custom(String::from("Missing provider attributes")));
         }
-
         Ok(None) as RpcResult<Option<()>>
     }
 
@@ -424,187 +301,8 @@ impl ProviderRegistrar {
             }
         };
 
-        info!("callback_provider_invoker: method={}", context.method);
-
-        let provided_by = match &context.provider_relation_set.provided_by {
-            Some(provided_by) => provided_by,
-            None => {
-                error!(
-                    "callback_provider_invoker: Missing provided_by: method={}",
-                    context.method
-                );
-                return Err(Error::Custom(String::from(
-                    "Unexpected schema configuration",
-                )));
-            }
-        };
-
-        let provider_relation_map = context
-            .platform_state
-            .open_rpc_state
-            .get_provider_relation_map();
-
-        let provided_by_set = match provider_relation_map.get(
-            &FireboltOpenRpcMethod::name_with_lowercase_module(provided_by),
-        ) {
-            Some(provided_by_set) => provided_by_set,
-            None => {
-                error!(
-                    "callback_provider_invoker: Missing provided_by_set: method={}",
-                    context.method
-                );
-                return Err(Error::Custom(String::from(
-                    "Unexpected schema configuration",
-                )));
-            }
-        };
-
-        let capability = match &provided_by_set.capability {
-            Some(capability) => capability,
-            None => {
-                error!(
-                    "callback_provider_invoker: Missing capability: method={}",
-                    context.method
-                );
-                return Err(Error::Custom(String::from(
-                    "Unexpected schema configuration",
-                )));
-            }
-        };
-
-        let (provider_response_payload_tx, provider_response_payload_rx) =
-            oneshot::channel::<ProviderResponsePayload>();
-
-        let caller = CallerSession {
-            session_id: Some(call_context.session_id.clone()),
-            app_id: Some(call_context.app_id.clone()),
-        };
-
-        let provider_broker_request = ProviderBrokerRequest {
-            capability: capability.clone(),
-            method: provided_by.clone(),
-            caller,
-            request: ProviderRequestPayload::Generic(params),
-            tx: provider_response_payload_tx,
-            app_id: None,
-        };
-
-        let provider_app_id =
-            ProviderBroker::invoke_method(&context.platform_state, provider_broker_request).await;
-
-        let result = match timeout(
-            Duration::from_millis(DEFAULT_PROVIDER_RESPONSE_TIMEOUT_MS),
-            provider_response_payload_rx,
-        )
-        .await
-        {
-            Ok(result) => result,
-            Err(e) => {
-                error!(
-                    "callback_provider_invoker: Error waiting for provider response: {:?}",
-                    e
-                );
-                return Err(Error::Custom(String::from("Provider response timeout")));
-            }
-        };
-
-        let provider_response_payload = match result {
-            Ok(provider_response_payload) => provider_response_payload,
-            Err(e) => {
-                error!(
-                    "callback_provider_invoker: Error waiting for provider response: {:?}",
-                    e
-                );
-                return Err(Error::Custom(String::from("Error returning from provider")));
-            }
-        };
-
-        match provider_response_payload {
-            ProviderResponsePayload::GenericResponse(provider_response_value) => {
-                let provider_response_value_map = match provider_response_value {
-                    Value::Object(ref map) => map,
-                    _ => {
-                        // Method returns a non-object type, just return it.
-                        return Ok(provider_response_value);
-                    }
-                };
-
-                let result_properties_map = match context
-                    .platform_state
-                    .open_rpc_state
-                    .get_openrpc_validator()
-                    .get_closest_result_properties_schema(
-                        &context.method,
-                        provider_response_value_map,
-                    ) {
-                    Some(result_properties_map) => result_properties_map,
-                    None => {
-                        error!("callback_provider_invoker: Result schema not found");
-                        return Err(Error::Custom(String::from("Result schema not found")));
-                    }
-                };
-
-                // Inject the provider app ID if the field exists in the provided-to response schema, the other field will be
-                // the provider response. The firebolt spec is not ideal in that the provider response data is captured
-                // within a field of the provided-to's response object, hence the somewhat arbritrary logic here. Ideally
-                // the provided-to response object would be identical to the provider response object aside from an optional
-                // appId field.
-
-                let mut response_map = Map::new();
-                for key in result_properties_map.keys() {
-                    if let Some(field) = provider_response_value_map.get(key) {
-                        response_map.insert(key.clone(), field.clone());
-                    } else if key.eq("appId") {
-                        response_map.insert(
-                            key.clone(),
-                            Value::String(provider_app_id.clone().unwrap_or_default()),
-                        );
-                    } else if let Some(Value::Object(result_property_map)) =
-                        result_properties_map.get(key)
-                    {
-                        let reference_path = match result_property_map.get("$ref") {
-                            Some(Value::String(path)) => path,
-                            _ => {
-                                error!("callback_provider_invoker: $ref not found: key={}", key);
-                                continue;
-                            }
-                        };
-
-                        if let Some(ref_properties_map) = context
-                            .platform_state
-                            .open_rpc_state
-                            .get_openrpc_validator()
-                            .get_result_ref_schema(reference_path)
-                        {
-                            // If any (!) of the keys match, assume the field in the schema holds the contents of the provider response. This
-                            // is the fragile part that should be addressed by a spec change, as Ripple can only guess at intention.
-
-                            if provider_response_value_map
-                                .keys()
-                                .any(|key| ref_properties_map.contains_key(key))
-                            {
-                                response_map.insert(key.clone(), provider_response_value.clone());
-
-                                // Just bail now, we're dumping the complete provider response into the response map
-                                // under some key in the schema, so it's either right or wrong but continuing to iterate
-                                // would be wrong-er.
-
-                                return Ok(Value::Object(response_map));
-                            }
-                        } else {
-                            error!("callback_provider_invoker: ref_properties_map not found");
-                        }
-                    } else {
-                        error!("callback_provider_invoker: Not an object: key={}", key);
-                    }
-                }
-                Ok(Value::Object(response_map))
-            }
-            ProviderResponsePayload::GenericError(e) => {
-                rpc_error_with_code_result::<Value>(e.message, e.code)
-            }
-            _ => Ok(provider_response_payload.as_value()),
-        }
+    // ProviderRelationSet removed: provided_by/capability logic skipped
+    Err(Error::Custom("Unexpected schema configuration".to_string()))
     }
 
     async fn callback_focus(
@@ -613,37 +311,8 @@ impl ProviderRegistrar {
     ) -> Result<Option<()>, Error> {
         info!("callback_focus: method={}", context.method);
 
-        if let Some(capability) = &context.provider_relation_set.capability {
-            let mut params_sequence = params.sequence();
-
-            let call_context: CallContext = match params_sequence.next() {
-                Ok(context) => context,
-                Err(e) => {
-                    error!("callback_focus: Error: {:?}", e);
-                    return Err(Error::Custom("Missing call context".to_string()));
-                }
-            };
-
-            let request: FocusRequest = match params_sequence.next() {
-                Ok(r) => r,
-                Err(e) => {
-                    error!("callback_focus: Error: {:?}", e);
-                    return Err(Error::Custom("Missing request".to_string()));
-                }
-            };
-
-            ProviderBroker::focus(
-                &context.platform_state,
-                call_context,
-                capability.clone(),
-                request,
-            )
-            .await;
-
-            Ok(None) as RpcResult<Option<()>>
-        } else {
-            Err(Error::Custom("Missing provides attribute".to_string()))
-        }
+    // ProviderRelationSet removed: capability logic skipped
+    Err(Error::Custom("Missing provides attribute".to_string()))
     }
 
     async fn callback_response(
@@ -654,13 +323,9 @@ impl ProviderRegistrar {
 
         let params_sequence = params.sequence();
 
-        let response_payload_type = match &context.provider_relation_set.attributes {
-            Some(attributes) => attributes.response_payload_type.clone(),
-            None => ProviderResponsePayloadType::GenericResponse,
-        };
-
+        // ProviderRelationSet removed: attributes logic skipped
         if let Some(provider_response) =
-            ProviderRegistrar::get_provider_response(response_payload_type, params_sequence)
+            ProviderRegistrar::get_provider_response(ProviderResponsePayloadType::GenericResponse, params_sequence)
         {
             ProviderBroker::provider_response(&context.platform_state, provider_response).await;
         } else {
@@ -672,89 +337,12 @@ impl ProviderRegistrar {
                 "Couldn't resolve response payload type",
             )));
         }
-
         Ok(None)
     }
 
     pub fn register_methods(platform_state: &PlatformState, methods: &mut Methods) -> u32 {
-        let provider_relation_map = platform_state.open_rpc_state.get_provider_relation_map();
-        let mut registered_methods = 0;
-
-        for method_name in provider_relation_map.clone().keys() {
-            if let Some(provider_relation_set) = provider_relation_map.get(method_name) {
-                let mut registered = false;
-
-                let method_name_lcm =
-                    FireboltOpenRpcMethod::name_with_lowercase_module(method_name).leak();
-
-                let rpc_module_context = RpcModuleContext::new(
-                    platform_state.clone(),
-                    method_name_lcm.into(),
-                    provider_relation_set.clone(),
-                );
-
-                let mut rpc_module = RpcModule::new(rpc_module_context.clone());
-
-                if provider_relation_set.event {
-                    if provider_relation_set.provided_by.is_some() {
-                        registered = Self::register_method(
-                            method_name_lcm,
-                            MethodType::AppEventListener,
-                            &mut rpc_module,
-                        );
-                    } else if provider_relation_set.capability.is_some()
-                        || provider_relation_set.provides_to.is_some()
-                    {
-                        registered = Self::register_method(
-                            method_name_lcm,
-                            MethodType::Provider,
-                            &mut rpc_module,
-                        );
-                    }
-                } else if provider_relation_set.provides_to.is_some() {
-                    registered = Self::register_method(
-                        method_name_lcm,
-                        MethodType::AppEventEmitter,
-                        &mut rpc_module,
-                    );
-                } else if provider_relation_set.error_for.is_some() {
-                    registered =
-                        Self::register_method(method_name_lcm, MethodType::Error, &mut rpc_module);
-                } else if provider_relation_set.provided_by.is_some() {
-                    registered = Self::register_method(
-                        method_name_lcm,
-                        MethodType::ProviderInvoker,
-                        &mut rpc_module,
-                    );
-                }
-
-                if !registered {
-                    if provider_relation_set.allow_focus_for.is_some() {
-                        registered = Self::register_method(
-                            method_name_lcm,
-                            MethodType::Focus,
-                            &mut rpc_module,
-                        );
-                    } else if provider_relation_set.response_for.is_some() {
-                        registered = Self::register_method(
-                            method_name_lcm,
-                            MethodType::Response,
-                            &mut rpc_module,
-                        );
-                    }
-                }
-
-                if registered {
-                    methods
-                        .merge(register_aliases(platform_state, rpc_module))
-                        .ok();
-
-                    registered_methods += 1;
-                }
-            }
-        }
-
-        registered_methods
+    // ProviderRelationSet and open_rpc_state removed: method registration logic skipped
+    0
     }
 }
 
@@ -762,7 +350,8 @@ impl ProviderRegistrar {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{state::openrpc_state::OpenRpcState, utils::test_utils};
+    // use crate::{state::openrpc_state::OpenRpcState, utils::test_utils};
+    use crate::utils::test_utils;
 
     use super::*;
     use jsonrpsee::core::server::rpc_module::Methods;
@@ -772,7 +361,7 @@ mod tests {
     async fn test_register_methods() {
         let mut methods = Methods::new();
         let mut runtime = test_utils::MockRuntime::new();
-        runtime.platform_state.open_rpc_state = OpenRpcState::new(None, Vec::new(), Vec::new());
+        // runtime.platform_state.open_rpc_state = OpenRpcState::new(None, Vec::new(), Vec::new());
 
         let mut provider_relation_map: HashMap<String, ProviderRelationSet> = HashMap::new();
         provider_relation_map.insert("some.method".to_string(), ProviderRelationSet::new());

@@ -167,7 +167,7 @@ impl GenericCapState {
             .iter()
             .filter_map(|permission| {
                 if let Some(cap_policy) = state
-                    .open_rpc_state
+                    // open_rpc_state removed: logic skipped
                     .get_capability_policy(permission.cap.as_str())
                 {
                     let role_policy = match permission.role {

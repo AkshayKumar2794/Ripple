@@ -55,11 +55,8 @@ impl FireboltGatewayStep {
         let _ = methods.merge(LifecycleRippleProvider::provide_with_alias(state.clone()));
         let _ = methods.merge(CapRPCProvider::provide_with_alias(state.clone()));
 
-        if !state.open_rpc_state.is_provider_enabled("Keyboard.") {
-            // Use built-in provider support if Keyboard APIs are not included in the
-            // manifest/defaults.
-            let _ = methods.merge(KeyboardRPCProvider::provide_with_alias(state.clone()));
-        }
+        // Always register KeyboardRPCProvider since open_rpc_state is removed
+        let _ = methods.merge(KeyboardRPCProvider::provide_with_alias(state.clone()));
 
         let _ = methods.merge(ClosedcaptionsRPCProvider::provide_with_alias(state.clone()));
         let _ = methods.merge(LocalizationRPCProvider::provide_with_alias(state.clone()));

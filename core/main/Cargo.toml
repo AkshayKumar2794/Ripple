@@ -43,6 +43,7 @@ contract_tests = [
     "websocket_contract_tests",
 ]
 tdk=[]
+openrpc_validation = ["openrpc_validator"]
 [dependencies]
 base64.workspace = true
 ripple_sdk = { workspace = true, features = ["full"] }
@@ -69,7 +70,7 @@ jaq-std = { version = "1.5.1", default-features = false }
 strum = { version = "0.24", default-features = false }
 strum_macros = "0.24"
 
-openrpc_validator = { path = "../../openrpc_validator" }
+openrpc_validator = { path = "../../openrpc_validator", optional = true }
 proc-macro2.workspace = true
 
 [build-dependencies]

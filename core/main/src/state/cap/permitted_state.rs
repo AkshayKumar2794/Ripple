@@ -142,9 +142,6 @@ impl PermissionHandler {
         app_id: &str,
         allow_cached: bool,
     ) -> RippleResponse {
-        if state.open_rpc_state.is_app_excluded(app_id) {
-            return Ok(());
-        }
 
         if state.get_device_manifest().get_features().cloud_permissions {
             if allow_cached {

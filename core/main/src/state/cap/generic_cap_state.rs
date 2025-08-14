@@ -166,22 +166,6 @@ impl GenericCapState {
         let filtered_permissions: Vec<FireboltPermission> = permissions
             .iter()
             .filter_map(|permission| {
-                if let Some(cap_policy) = state
-                    .open_rpc_state
-                    .get_capability_policy(permission.cap.as_str())
-                {
-                    let role_policy = match permission.role {
-                        CapabilityRole::Use => &cap_policy.use_role,
-                        CapabilityRole::Manage => &cap_policy.manage,
-                        CapabilityRole::Provide => &cap_policy.provide,
-                    };
-
-                    if let Some(perm_policy) = role_policy {
-                        if perm_policy.public && !perm_policy.negotiable {
-                            return None;
-                        }
-                    }
-                }
                 Some(permission.clone())
             })
             .collect();

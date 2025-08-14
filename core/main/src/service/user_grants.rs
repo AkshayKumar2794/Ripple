@@ -934,73 +934,15 @@ impl GrantState {
                     caps: vec![permission.cap.clone()],
                 }),
             };
-            if grant_policy.privacy_setting.is_none()
-                || !grant_policy
-                    .privacy_setting
-                    .as_ref()
-                    .unwrap()
-                    .update_property
-            {
-                //There is no need to update privacy settings so it is enough to update only user grants storage.
-                let result = GrantPolicyEnforcer::store_user_grants(
-                    platform_state,
-                    &permission,
-                    &result,
-                    app_id,
-                    &grant_policy,
-                )
-                .await;
-
-                LogSignal::new(
-                    "user_grants".to_string(),
-                    format!("store_user_grants process result:{:?}", result),
-                    ctx.clone(),
-                )
-                .with_diagnostic_context_item("fireboltcap", &format!("{:?}", permission.cap))
-                .with_diagnostic_context_item("capabilityrole", &format!("{:?}", permission.role))
-                .with_diagnostic_context_item("app_id", &format!("{:?}", app_id))
-                .emit_debug();
-                return Ok(());
-            } else {
-                GrantPolicyEnforcer::update_privacy_settings_and_user_grants(
-                    platform_state,
-                    &permission,
-                    &result,
-                    app_id,
-                    &grant_policy,
-                )
-                .await;
-
-                LogSignal::new(
-                    "user_grants".to_string(),
-                    format!(
-                        "update_privacy_settings_and_user_grants process result: {:?}",
-                        result
-                    ),
-                    ctx.clone(),
-                )
-                .with_diagnostic_context_item("fireboltcap", &format!("{:?}", permission.cap))
-                .with_diagnostic_context_item("capabilityrole", &format!("{:?}", permission.role))
-                .with_diagnostic_context_item("app_id", &format!("{:?}", app_id))
-                .with_diagnostic_context_item("lifespan", &format!("{:?}", grant_policy.lifespan))
-                .with_diagnostic_context_item("grantscope", &format!("{:?}", grant_policy.scope))
-                .with_diagnostic_context_item(
-                    "lifespan_ttl",
-                    &format!("{:?}", grant_policy.lifespan_ttl),
-                )
-                .with_diagnostic_context_item(
-                    "persistence",
-                    &format!("{:?}", grant_policy.persistence),
-                )
-                .with_diagnostic_context_item(
-                    "privacy_setting",
-                    &format!("{:?}", grant_policy.privacy_setting),
-                )
-                .with_diagnostic_context_item("options", &format!("{:?}", grant_policy.options))
-                .emit_debug();
-
-                return Ok(());
-            }
+            let result = GrantPolicyEnforcer::store_user_grants(
+                platform_state,
+                &permission,
+                &result,
+                app_id,
+                &grant_policy,
+            )
+            .await;
+            return Ok(());
         } else {
             // For clear user grants, we will only clear the stored user grants.
             // It is will not affect the privacy settings.
@@ -1291,20 +1233,6 @@ impl GrantPolicyEnforcer {
                 .and_then(|policies| policies.get_policy(permission));
 
             if let Some(policy) = policy_opt {
-                if let Some(privacy_setting) = policy.privacy_setting {
-                    if privacy_setting.auto_apply_policy != AutoApplyPolicy::Never {
-                        let result = GrantPolicyEnforcer::evaluate_privacy_settings(
-                            platform_state,
-                            &privacy_setting,
-                        )
-                        .await;
-
-                        if result.is_some() {
-                            // already resolved.
-                            return false;
-                        }
-                    }
-                }
 
                 // Now check if provider and capability are available.
                 for grant_requirements in &policy.options {
@@ -1459,9 +1387,7 @@ impl GrantPolicyEnforcer {
         // evaluating first.
         if let Some(privacy) = &policy.privacy_setting {
             let privacy_property = &privacy.property;
-            return platform_state
-                .open_rpc_state
-                .check_privacy_property(privacy_property);
+            return true;
         }
         if policy.get_steps_without_grant().is_some() {
             // If any cap in any step in a policy is not starting with
@@ -1475,11 +1401,7 @@ impl GrantPolicyEnforcer {
     }
 
     pub fn get_allow_value(platform_state: &PlatformState, property_name: &str) -> Option<bool> {
-        // Find the rpc method which has same name as that mentioned in privacy settings, and has allow property.
-        platform_state
-            .open_rpc_state
-            .get_method_with_allow_value_property(String::from(property_name))
-            .map(|method| method.get_allow_value().unwrap()) // We can safely unwrap because the previous step in the chain ensures x-allow-value is present
+        None
     }
 
     async fn evaluate_privacy_settings(
@@ -1584,34 +1506,13 @@ impl GrantPolicyEnforcer {
             "x-allow-value: {}, grant: {}, set_value: {}",
             allow_value, grant, set_value
         );
-        let method_name =
-            match Self::get_setter_method_name(platform_state, &privacy_setting.property) {
-                Some(method_name) => method_name,
-                None => {
-                    error!(
-                        "Unable to find setter method for property: {}",
-                        privacy_setting.property.as_str()
-                    );
-                    return;
-                }
-            };
-        debug!("Resolved method_name: {}", &method_name);
-        let set_request = SetBoolProperty { value: set_value };
-        let _res =
-            PrivacyImpl::handle_allow_set_requests(&method_name, platform_state, set_request).await;
     }
 
     pub fn get_setter_method_name(
         platform_state: &PlatformState,
         property: &str,
     ) -> Option<String> {
-        let firebolt_rpc_method_opt = platform_state
-            .open_rpc_state
-            .get_open_rpc()
-            .get_setter_method_for_getter(property);
-        firebolt_rpc_method_opt.map(|firebolt_openrpc_method| {
-            FireboltOpenRpcMethod::name_with_lowercase_module(&firebolt_openrpc_method.name)
-        })
+        None
     }
 
     async fn evaluate_options(
@@ -1910,18 +1811,6 @@ impl GrantStepExecutor {
 
         let mut method_key: Option<String> = None;
 
-        for (key, provider_relation_set) in platform_state
-            .open_rpc_state
-            .get_provider_relation_map()
-            .iter()
-        {
-            if let Some(provides) = &provider_relation_set.provides {
-                if provides.eq(&cap.as_str()) {
-                    method_key = Some(key.clone());
-                    break;
-                }
-            }
-        }
 
         if method_key.is_none() {
             error!(

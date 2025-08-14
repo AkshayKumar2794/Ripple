@@ -209,9 +209,6 @@ impl CapState {
         firebolt_caps: &Vec<FireboltCap>,
     ) -> Result<Vec<CapabilityInfo>, RippleError> {
         let mut ignored_app = false;
-        if state.open_rpc_state.is_app_excluded(&call_context.app_id) {
-            ignored_app = true;
-        }
         let mut capability_infos = Vec::new();
         for cap in firebolt_caps {
             let mut capability_info = CapabilityInfo {
@@ -340,7 +337,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        state::openrpc_state::OpenRpcState,
         utils::test_utils::{self, MockCallContext},
     };
     use ripple_sdk::tokio;
@@ -355,8 +351,6 @@ mod tests {
             app_authorization_rules: AppAuthorizationRules { app_ignore_rules },
             method_ignore_rules: Vec::new(),
         };
-        runtime.platform_state.open_rpc_state =
-            OpenRpcState::new(Some(exclusory), Vec::new(), Vec::new());
         if let Ok(v) = CapState::get_cap_info(
             &runtime.platform_state,
             MockCallContext::get_from_app_id("some_app"),

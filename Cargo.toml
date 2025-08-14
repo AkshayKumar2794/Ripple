@@ -21,8 +21,7 @@ members = [
     "core/tdk",
     "device/thunder_ripple_sdk",
     "core/main",
-    "device/mock_device",
-    "openrpc_validator"]
+    "device/mock_device"]
 
 [workspace.package]
 version = "1.1.0"

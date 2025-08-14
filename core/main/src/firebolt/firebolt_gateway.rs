@@ -48,7 +48,7 @@ use crate::{
         telemetry_builder::TelemetryBuilder,
     },
     state::{
-        bootstrap_state::BootstrapState, openrpc_state::OpenRpcState,
+        bootstrap_state::BootstrapState,
         platform_state::PlatformState, session_state::Session,
     },
     utils::router_utils::{capture_stage, get_rpc_header_with_status},
@@ -317,21 +317,9 @@ impl FireboltGateway {
             ripple_sdk::api::manifest::device_manifest::IntentValidation::FailOpen
         );
 
-        let open_rpc_state = self.state.platform_state.open_rpc_state.clone();
 
         tokio::spawn(async move {
             capture_stage(&platform_state.metrics, &request_c, "context_ready");
-            // Validate incoming request parameters.
-            if let Err(error_string) = validate_request(open_rpc_state, &request_c, fail_open) {
-                let json_rpc_error = JsonRpcError {
-                    code: JSON_RPC_STANDARD_ERROR_INVALID_PARAMS,
-                    message: error_string,
-                    data: None,
-                };
-
-                send_json_rpc_error(&mut platform_state, &request, json_rpc_error).await;
-                return;
-            }
 
             capture_stage(&platform_state.metrics, &request_c, "openrpc_val");
             let result = if extn_request || service_request {
@@ -451,82 +439,6 @@ impl FireboltGateway {
             }
         });
     }
-}
-
-fn validate_request(
-    open_rpc_state: OpenRpcState,
-    request: &RpcRequest,
-    fail_open: bool,
-) -> Result<(), String> {
-    // Existing fail open configuration should work where the
-    // call should be delegated to the actual handler
-    if fail_open {
-        match request.method.to_lowercase().as_str() {
-            "lifecyclemanagement.session" | "discovery.launch" => return Ok(()),
-            _ => {}
-        }
-    }
-
-    // Params should be valid given we get the request from Firebolt WS Call context is decorated
-    // in index 0
-    if let Ok(params) = serde_json::from_str::<Vec<serde_json::Value>>(&request.params_json) {
-        // Check if there are params
-        let param = params.get(1);
-        if param.is_none() {
-            // if params are necessary then handler or jq rule will fail
-            // This method can unblock other calls.
-            return Ok(());
-        }
-        let param = param.unwrap();
-        let method_name = request.method.to_lowercase();
-
-        // Check if the cache is already created using add_json_schema_cache below
-        let v = open_rpc_state.validate_schema(&method_name, param);
-        if v.is_ok() {
-            // Params are valid
-            return Ok(());
-        } else if let Err(Some(s)) = v {
-            // Params are not valid
-            return Err(s);
-        }
-        let major_version = open_rpc_state.get_version().major.to_string();
-        let openrpc_validator = open_rpc_state.get_openrpc_validator();
-        // Get Method from the validator
-        if let Some(rpc_method) = openrpc_validator.get_method(&method_name) {
-            // Get schema validator
-            let validator = openrpc_validator
-                .params_validator(major_version, &rpc_method.name)
-                .unwrap();
-            // validate
-            if let Err(errors) = validator.validate(param) {
-                let mut error_string = String::new();
-                for error in errors {
-                    error_string.push_str(&format!("{} ", error));
-                }
-                let mut diagnostic_context = HashMap::new();
-                diagnostic_context.insert("error".to_string(), error_string.clone());
-                LogSignal::new(
-                    "firebolt_gateway".into(),
-                    "invalid_params".into(),
-                    request.clone(),
-                )
-                .with_diagnostic_context(diagnostic_context)
-                .emit_debug();
-                return Err(error_string);
-            }
-            // store validator in runtime for future validations of the same api
-            open_rpc_state.add_json_schema_cache(method_name, validator);
-        } else {
-            // TODO: Currently LifecycleManagement and other APIs are not in the schema. Let these pass through to their
-            // respective handlers for now.
-            debug!(
-                "validate_request: Method not found in schema: {}",
-                request.method
-            );
-        }
-    }
-
-    Ok(())
 }
 
 async fn send_json_rpc_error(

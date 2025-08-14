@@ -24,7 +24,7 @@ use ripple_sdk::api::gateway::rpc_gateway_api::RpcRequest;
 use ripple_sdk::log::trace;
 
 use crate::service::user_grants::GrantState;
-use crate::state::openrpc_state::ApiSurface;
+//use crate::state::openrpc_state::ApiSurface;
 use crate::state::{cap::permitted_state::PermissionHandler, platform_state::PlatformState};
 
 pub struct FireboltGatekeeper {}
@@ -59,21 +59,7 @@ impl FireboltGatekeeper {
             method,
             secure,
         );
-        let mut api_surface = vec![ApiSurface::Firebolt];
-        if !secure {
-            api_surface.push(ApiSurface::Ripple);
-        }
-        let perm_based_on_spec = platform_state
-            .open_rpc_state
-            .get_perms_for_method(method, api_surface)?;
-
-        if perm_based_on_spec.is_empty() {
-            return Some(perm_based_on_spec);
-        }
-        Some(Self::resolve_dependencies(
-            platform_state,
-            &perm_based_on_spec,
-        ))
+        None
     }
     // TODO return Deny Reason into ripple error
     pub async fn gate(
@@ -132,12 +118,8 @@ impl FireboltGatekeeper {
         request: RpcRequest,
         filtered_perm_list: Vec<FireboltPermission>,
     ) -> Result<(), DenyReasonWithCap> {
-        // permission checks
-        let open_rpc_state = state.clone().open_rpc_state;
-        // check if the app or method is in permission exclusion list
-        if open_rpc_state.is_excluded(request.clone().method, request.clone().ctx.app_id) {
-            trace!("Method is exluded from permission check {}", request.method);
-        } else if let Err(e) =
+        // permission checks are removed now
+        if let Err(e) =
             PermissionHandler::check_permitted(&state, &request.ctx.app_id, &filtered_perm_list)
                 .await
         {
